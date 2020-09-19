@@ -40,12 +40,15 @@ Stream * WifiInterface::wifiStream = NULL;
 HTTP_CALLBACK WifiInterface::httpCallback = 0;
 
 
-void WifiInterface::setup(Stream & setupStream,  const __FlashStringHelper* SSid, const __FlashStringHelper* password,
+bool WifiInterface::setup(Stream & setupStream,  const __FlashStringHelper* SSid, const __FlashStringHelper* password,
                           const __FlashStringHelper* hostname,  int port) {
+  static uint8_t ntry = 0;
+  ntry++;
 
   wifiStream = &setupStream;
 
-  DIAG(F("\n++++++ Wifi Setup In Progress ++++++++\n"));
+  DIAG(F("\n++ Wifi Setup Try %d ++\n"), ntry);
+
   connected = setup2( SSid, password, hostname,  port);
  
   if (connected) {
@@ -53,7 +56,8 @@ void WifiInterface::setup(Stream & setupStream,  const __FlashStringHelper* SSid
     checkForOK(200, OK_SEARCH, true);      
   }
  
- DIAG(F("\n++++++ Wifi Setup %S ++++++++\n"), connected ? F("OK") : F("FAILED"));
+  DIAG(F("\n++ Wifi Setup %S ++\n"), connected ? F("OK") : F("FAILED"));
+  return connected;
 }
 
 bool WifiInterface::setup2(const __FlashStringHelper* SSid, const __FlashStringHelper* password,
@@ -71,9 +75,12 @@ bool WifiInterface::setup2(const __FlashStringHelper* SSid, const __FlashStringH
     return true; 
   }
 
-   
+  StringFormatter::send(wifiStream, F("AT\r\n"));   // Is something here?Turn on the echo, se we can see what's happening
+  if(!checkForOK(200, OK_SEARCH, true))
+    return false;                                   // No AT compatible WiFi module here
+
   StringFormatter::send(wifiStream, F("ATE1\r\n")); // Turn on the echo, se we can see what's happening
-  checkForOK(2000, OK_SEARCH, true);      // Makes this visible on the console
+  checkForOK(2000, OK_SEARCH, true);                // Makes this visible on the console
 
   // Display the AT version information
   StringFormatter::send(wifiStream, F("AT+GMR\r\n")); 

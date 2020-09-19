@@ -29,6 +29,12 @@
 DCCEXParser  serialParser;
 
 void setup() {
+  const __FlashStringHelper* wifiESSID=F("Your network name");
+  const __FlashStringHelper* wifiPassword=F("Your network password");
+  const __FlashStringHelper* dccex=F("DCCEX");
+  const uint16_t port=3532;
+
+  bool wifiUp=false;
 
   // The main sketch has responsibilities during setup()
   
@@ -41,7 +47,17 @@ void setup() {
    //        your wifi chip/shield.    
   
   Serial1.begin(WIFI_BAUD);
-  WifiInterface::setup(Serial1, F("Your network name"), F("your network password"),F("DCCEX"),3532);
+  wifiUp = WifiInterface::setup(Serial1, wifiESSID, wifiPassword,dccex,port);
+#if defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_MEGA2560)
+  if (!wifiUp) {
+    Serial2.begin(WIFI_BAUD);
+    wifiUp = WifiInterface::setup(Serial2, wifiESSID, wifiPassword,dccex,port);
+  }
+  if (!wifiUp) {
+    Serial3.begin(WIFI_BAUD);
+    wifiUp = WifiInterface::setup(Serial3, wifiESSID, wifiPassword,dccex,port);
+  }
+#endif
   
    // Responsibility 3: Start the DCC engine.
    // Note: this provides DCC with two motor drivers, main and prog, which handle the motor shield(s)
