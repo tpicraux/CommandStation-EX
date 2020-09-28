@@ -346,13 +346,9 @@ void WifiInterface::loop() {
         break;
 
     case 12: // Waiting for OK after send busy 
-        if (ch == '+') { // Uh-oh IPD problem
-          if (Diag::WIFI) DIAG(F("\n\n Wifi ASYNC CLASH - LOST REPLY\n"));
-          connectionId = 0;
-          loopstate = 1;
-        }
-        if (ch == 'K') { // assume its in  SEND OK
+        if (ch == '\r') { // assume its in  SEND OK
           if (Diag::WIFI)  DIAG(F("\n\n Wifi BUSY RETRYING.. AT+CIPSEND=%d,%d\r\n"), connectionId, streamer->available());
+          delay(20); // experimental... will this allow ES to get knickers un-twisted
           StringFormatter::send(wifiStream, F("AT+CIPSEND=%d,%d\r\n"), connectionId, streamer->available());
           loopTimeoutStart = millis();
           loopstate = 10; // non-blocking loop waits for > before sending
