@@ -12,7 +12,6 @@
 #include "config.h"
 #include "DCCEX.h"
 
-
 ////////////////////////////////////////////////////////////////
 //
 // Enables an I2C 2x24 or 4x24 LCD Screen
@@ -32,7 +31,6 @@ DCCEXParser serialParser;
 
 void setup()
 {
-  
 ////////////////////////////////////////////
 //
 // More display stuff. Need to put this in a .h file and make
@@ -73,7 +71,7 @@ void setup()
 //  NOTE: References to Serial1 are for the serial port used to connect
 //        your wifi chip/shield.
 
-#ifdef WIFI_ON
+#if WIFI_ON
   bool wifiUp = false;
   const __FlashStringHelper *wifiESSID = F(WIFI_SSID);
   const __FlashStringHelper *wifiPassword = F(WIFI_PASSWORD);
@@ -123,10 +121,10 @@ void loop()
   serialParser.loop(Serial);
 
 // Responsibility 3: Optionally handle any incoming WiFi traffic
-#ifdef WIFI_ON
+#if WIFI_ON
   WifiInterface::loop();
 #endif
-
+ 
 // Optionally report any decrease in memory (will automatically trigger on first call)
 #if ENABLE_FREE_MEM_WARNING
   static int ramLowWatermark = 32767; // replaced on first loop 
