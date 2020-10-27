@@ -25,6 +25,7 @@
 #include <avr/pgmspace.h>
 
 enum wifiSerialState { WIFI_NOAT, WIFI_DISCONNECTED, WIFI_CONNECTED };
+enum wifiESPMode { WIFIMODE_UNKNOWN = 0, WIFIMODE_STA = 1, WIFIMODE_AP = 2 };
 
 class WifiInterface
 {
@@ -55,5 +56,8 @@ private:
   static const byte MAX_WIFI_BUFFER = 250;
   static byte buffer[MAX_WIFI_BUFFER + 1];
   static MemStream * streamer;
+  static wifiESPMode wifiMode;
+  static char wifiIP[16];
+  static int wifiPort;
 };
 #endif

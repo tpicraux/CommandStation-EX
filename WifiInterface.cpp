@@ -32,6 +32,12 @@ const char  PROGMEM SEND_OK_SEARCH[] = "\r\nSEND OK\r\n";
 const char  PROGMEM IPD_SEARCH[] = "+IPD";
 const unsigned long LOOP_TIMEOUT = 2000;
 bool WifiInterface::connected = false;
+wifiESPMode WifiInterface::wifiMode = WIFIMODE_UNKNOWN;
+char WifiInterface::wifiIP[16];
+int WifiInterface::wifiPort = 0;
+
+
+
 Stream * WifiInterface::wifiStream;
 
 
@@ -252,8 +258,48 @@ wifiSerialState WifiInterface::setup2(const __FlashStringHelper* SSid, const __F
   if (!checkForOK(10000, OK_SEARCH, true)) return WIFI_DISCONNECTED;
  
   StringFormatter::send(wifiStream, F("AT+CIFSR\r\n")); // Display  ip addresses to the DIAG 
-  if (!checkForOK(10000, OK_SEARCH, true, false)) return WIFI_DISCONNECTED;
-  DIAG(F("\nPORT=%d\n"),port);
+  if (!checkForOK(10000, (const char *)F("+CIFSR:"), true, false))
+      return WIFI_DISCONNECTED;
+  else {
+      // now we should be at APIP," or STAIP,"
+      char c = ':';
+      char oldc = ':';
+      while (c != '"') {
+	  while (!wifiStream->available());
+	  switch(c = wifiStream->read()) {
+	  case 'T':
+	      if (oldc == 'S') wifiMode = WIFIMODE_STA;
+	      break;
+	  case 'P':
+	      if (oldc == 'A') wifiMode = WIFIMODE_AP;
+	      break;
+	  default:
+	      // ignore other chars
+	      break;
+	  }
+	  oldc = c;
+      }
+      
+      byte i=0;
+      for (;;) {
+	  while(!wifiStream->available());
+	  wifiIP[i]=wifiStream->read();
+	  if (wifiIP[i] == '"' || i >= 15) {
+	      wifiIP[i]='\0';
+	      break;
+	  }
+	  i++;
+      }
+      wifiPort=port;
+
+      LCD(2,F("%s"), wifiIP);
+      if (wifiMode == WIFIMODE_STA)
+	  LCD(3,F("P=%d WifiCLIENT"),wifiPort);
+      else {
+	  char macTail[]={macAddress[9],macAddress[10],macAddress[12],macAddress[13],macAddress[15],macAddress[16],'\0'};
+	  LCD(3,F("P=%d AP %s"),wifiPort, macTail);
+      }
+  }
    
   return WIFI_CONNECTED;
 }
