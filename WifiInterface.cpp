@@ -22,7 +22,7 @@
 #include <avr/pgmspace.h>
 #include "DIAG.h"
 #include "StringFormatter.h"
-#include "WiThrottle.h"
+
 #include "WifiInboundHandler.h"
 
 const char  PROGMEM READY_SEARCH[]  = "\r\nready\r\n";
@@ -95,6 +95,13 @@ bool WifiInterface::setup(long serial_link_speed,
     wifiUp = setup(Serial3, wifiESSID, wifiPassword, hostname, port);
   }
 #endif
+
+  if (wifiUp == WIFI_NOAT) // here and still not AT commands found
+      return false;
+
+  DCCEXParser::setAtCommandCallback(ATCommand);
+  // CAUTION... ONLY CALL THIS ONCE 
+  WifiInboundHandler::setup(wifiStream);
   if (wifiUp == WIFI_CONNECTED)
       connected = true;
   else
@@ -124,8 +131,6 @@ wifiSerialState WifiInterface::setup(Stream & setupStream,  const __FlashStringH
     checkForOK(200, OK_SEARCH, true);      
   }
 
-  DCCEXParser::setAtCommandCallback(ATCommand);
-  WifiInboundHandler::setup(wifiStream);
     
   DIAG(F("\n++ Wifi Setup %S ++\n"), wifiState == WIFI_CONNECTED ? F("CONNECTED") : F("DISCONNECTED"));
   return wifiState;
@@ -235,8 +240,9 @@ wifiSerialState WifiInterface::setup2(const __FlashStringHelper* SSid, const __F
     if (oldCmd) {
       while (wifiStream->available()) StringFormatter::printEscape( wifiStream->read()); /// THIS IS A DIAG IN DISGUISE
 
-      StringFormatter::send(wifiStream, F("AT+CWSAP=\"DCCEX_%s\",\"PASS_%s\",1,4\r\n"), macTail, macTail);
-      checkForOK(16000, OK_SEARCH, true); // can ignore failure as AP mode may still be ok
+      int i=0;
+      do StringFormatter::send(wifiStream, F("AT+CWSAP=\"DCCEX_%s\",\"PASS_%s\",1,4\r\n"), macTail, macTail);
+      while (i++<2 && !checkForOK(16000, OK_SEARCH, true)); // do twice if necessary but ignore failure as AP mode may still be ok
       
     } else {
 
@@ -352,7 +358,6 @@ bool WifiInterface::checkForOK( const unsigned int timeout, const char * waitfor
 
 void WifiInterface::loop() {
   if (connected) {
-    WiThrottle::loop();
     WifiInboundHandler::loop(); 
   }
 }
