@@ -104,8 +104,10 @@ bool WifiInterface::setup(long serial_link_speed,
   WifiInboundHandler::setup(wifiStream);
   if (wifiUp == WIFI_CONNECTED)
       connected = true;
-  else
+  else {
+      LCD(3, F("WIFI no config"));
       connected = false;
+  }
   return connected; 
 }
 
@@ -300,7 +302,7 @@ wifiSerialState WifiInterface::setup2(const __FlashStringHelper* SSid, const __F
 
       LCD(2,F("%s"), wifiIP);
       if (wifiMode == WIFIMODE_STA)
-	  LCD(3,F("P=%d WifiCLIENT"),wifiPort);
+	  LCD(3,F(":%d WifiCLIENT"),wifiPort);
       else {
 	  char macTail[]={macAddress[9],macAddress[10],macAddress[12],macAddress[13],macAddress[15],macAddress[16],'\0'};
 	  LCD(3,F("P=%d AP %s"),wifiPort, macTail);
