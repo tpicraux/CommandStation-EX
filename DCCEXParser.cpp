@@ -96,6 +96,7 @@ void DCCEXParser::loop(Stream &stream)
             buffer[bufferLength++] = ch;
         }
     }
+    Sensor::checkAll(&stream); // Update and print changes
 }
 
 int DCCEXParser::splitValues(int result[MAX_PARAMS], const byte *cmd)
@@ -359,11 +360,7 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
         return;
 
     case 'Q': // SENSORS <Q>
-        Sensor::checkAll();
-        for (Sensor *tt = Sensor::firstSensor; tt != NULL; tt = tt->nextSensor)
-        {
-            StringFormatter::send(stream, F("<%c %d>"), tt->active ? 'Q' : 'q', tt->data.snum);
-        }
+        Sensor::printAll(stream);
         return;
 
     case 's': // <s>
@@ -439,13 +436,13 @@ bool DCCEXParser::parseZ(Print *stream, int params, int p[])
 
     case 3: // <Z ID PIN INVERT>
         if (!Output::create(p[0], p[1], p[2], 1))
-            return false;            
+          return false;
         StringFormatter::send(stream, F("<O>"));
         return true;
 
     case 1: // <Z ID>
         if (!Output::remove(p[0]))
-            return false;
+          return false;
         StringFormatter::send(stream, F("<O>"));
         return true;
 
@@ -556,18 +553,19 @@ bool DCCEXParser::parseS(Print *stream, int params, int p[])
     {
     case 3: // <S id pin pullup>  create sensor. pullUp indicator (0=LOW/1=HIGH)
         if (!Sensor::create(p[0], p[1], p[2]))
-            return false;
-        StringFormatter::send(stream, F("<O>"));    
+          return false;
+        StringFormatter::send(stream, F("<O>"));
         return true;
 
     case 1: // S id> remove sensor
         if (!Sensor::remove(p[0]))
-            return false;
+          return false;
         StringFormatter::send(stream, F("<O>"));
         return true;
-        break;
 
     case 0: // <S> lit sensor states
+	if (Sensor::firstSensor == NULL)
+	    return false;
         for (Sensor *tt = Sensor::firstSensor; tt != NULL; tt = tt->nextSensor)
         {
             StringFormatter::send(stream, F("<Q %d %d %d>"), tt->data.snum, tt->data.pin, tt->data.pullUp);
