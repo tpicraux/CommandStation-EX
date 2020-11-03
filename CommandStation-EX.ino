@@ -12,6 +12,51 @@
 #include "config.h"
 #include "DCCEX.h"
 
+// All RF24 feature includes
+#include <SPI.h> // RF24
+#include <RF24.h>
+#include <RF24Network.h>
+
+// more RF24 Feature setup
+RF24 radio(9, 10);               // nRF24L01 (CE,CSN)
+//RF24 radio(10, 9);             // Alt config
+RF24Network network(radio);      // Include the radio in the network
+const uint16_t this_node = 05;
+const uint16_t master_node00 = 00;
+
+// ----------------- RF24 Feature -------------
+// This is an example of the DCC-EX 3.0 User Override Function (aka filters)
+// The filter must be enabled by calling the DCC EXParser::setFilter method, see use in setup().
+#include "Turnouts.h" 
+void RF24filter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
+    bool result;
+    (void)stream; // avoid compiler warning if we don't access this parameter
+    if (opcode=='T' && paramCount==2) {  // look for command of format: <T id 1/0>  
+       //  This checks if a turnout was created. To bypass check, remove these 2 lines
+       //  and the include for Turnouts.h above
+       Turnout * tt= Turnout::get(p[0]); // Locate turnout definition 
+       if (!tt) return; // No turnout found
+       
+       // You have access to tt->data.address and tt->subAddress 
+
+       // I'm guessing that the Node is constant here 
+       RF24NetworkHeader header(master_node00);
+       char data[20]="/1/";
+       itoa(p[0],data+3,10); // convert int to string. Is there an override of rf24 functions to avoid this?
+       strcat(data,p[1]==1?"/1":"/2"); // build the command. p[0] is id, p[1] is throw/close
+       result = network.write(header, data, strlen(data));     
+       // StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, p[1]);
+       if (result){
+         StringFormatter::send(stream, F("<H %d %d>"), p[0], p[1]);
+       }
+       else {
+         StringFormatter::send(stream, F("<X>"));
+       }
+       
+       opcode=0;  // tell parser to ignore this command as we have done it already
+    }
+}
+
 // Create a serial command parser for the USB connection, 
 // This supports JMRI or manual diagnostics and commands
 // to be issued from the USB serial console.
@@ -50,6 +95,14 @@ void setup()
 
   DCC::begin(MOTOR_SHIELD_TYPE); 
   LCD(1,F("Ready")); 
+  
+  // rf24 feature - Enable the filter
+  // if we have a display, optionally do something like this: LCD(2,F("RF24 Active"))
+  DCCEXParser::setFilter(RF24filter); 
+  SPI.begin();
+  radio.begin();
+  network.begin(90, this_node); //(channel, node address)
+  radio.setDataRate(RF24_2MBPS); // Max baud rate
 }
 
 void loop()
