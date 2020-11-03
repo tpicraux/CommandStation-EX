@@ -23,6 +23,8 @@
 #include "EEStore.h"
 #include "GITHUB_SHA.h"
 #include "version.h"
+#include "TPL.h"
+#include "TPL2.h"
 
 // This module is responsible for converting API calls into
 // messages to be sent to the waveform generator.
@@ -53,7 +55,8 @@ void DCC::begin(const __FlashStringHelper* motorShieldName, MotorDriver * mainDr
   (void)EEPROM; // tell compiler not to warn this is unused
   EEStore::init();
 
-  DCCWaveform::begin(mainDriver,progDriver, timerNumber); 
+  DCCWaveform::begin(mainDriver,progDriver, timerNumber);
+  TPL::begin(); 
 }
 
 void DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
@@ -434,6 +437,7 @@ void DCC::loop()  {
   DCCWaveform::loop(); // power overload checks
   ackManagerLoop(false);    // maintain prog track ack manager
   issueReminders();
+  TPL:loop(); // Dummy if TPL not in use
 }
 
 void DCC::issueReminders() {

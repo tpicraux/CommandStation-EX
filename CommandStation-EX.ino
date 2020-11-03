@@ -38,6 +38,10 @@ void setup()
   WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT);
 #endif // WIFI_ON
 
+#if __has_include ("myLayout.h")
+  #include "myLayout.h"
+#endif
+
   // Responsibility 3: Start the DCC engine.
   // Note: this provides DCC with two motor drivers, main and prog, which handle the motor shield(s)
   // Standard supported devices have pre-configured macros but custome hardware installations require
