@@ -38,6 +38,10 @@ void setup()
   WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT);
 #endif // WIFI_ON
 
+#if ETHERNET_ON
+  EthernetInterface::setup();
+#endif // ETHERNET_ON
+
 #if __has_include ("myLayout.h")
   #include "myLayout.h"
 #endif
@@ -70,6 +74,9 @@ void loop()
 // Responsibility 3: Optionally handle any incoming WiFi traffic
 #if WIFI_ON
   WifiInterface::loop();
+#endif
+#if ETHERNET_ON
+  EthernetInterface::loop();
 #endif
 
   LCDDisplay::loop();  // ignored if LCD not in use 
