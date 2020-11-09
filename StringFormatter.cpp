@@ -38,6 +38,7 @@ bool Diag::CMD=false;
 bool Diag::WIFI=false;
 bool Diag::WITHROTTLE=false;
 bool Diag::ETHERNET=false;
+bool Diag::TPL=false;
 
  
 void StringFormatter::diag( const __FlashStringHelper* input...) {

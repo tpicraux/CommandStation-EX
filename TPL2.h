@@ -1,6 +1,22 @@
 #ifndef TPL2_H
 #define TPL2_H
 
+enum OPCODE {OPCODE_TL,OPCODE_TR,
+             OPCODE_FWD,OPCODE_REV,OPCODE_SPEED,OPCODE_INVERT_DIRECTION,
+             OPCODE_RESERVE,OPCODE_FREE,
+             OPCODE_AT,OPCODE_AFTER,OPCODE_SET,OPCODE_RESET,
+             OPCODE_IF,OPCODE_IFNOT,OPCODE_ENDIF,OPCODE_IFRANDOM,
+             OPCODE_DELAY,OPCODE_RANDWAIT,
+             OPCODE_FON, OPCODE_FOFF,
+             OPCODE_RED,OPCODE_GREEN,
+             OPCODE_PAD,OPCODE_FOLLOW,OPCODE_ENDROUTE,
+             OPCODE_PROGTRACK,OPCODE_READ_LOCO1,OPCODE_READ_LOCO2,
+             OPCODE_SCHEDULE,OPCODE_SETLOCO,
+             OPCODE_PAUSE, OPCODE_RESUME, 
+             OPCODE_ROUTE,OPCODE_ENDROUTES
+             };
+
+
  class TPL2 {
    public:
     static void begin();
@@ -9,6 +25,9 @@
     ~TPL2();
     static void readLocoCallback(int cv);
   private: 
+    static void ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]);
+    static bool parseSlash(Print * stream, byte & opcode, byte & paramCount, int p[]) ;
+
     static int locateRouteStart(short _route);
     static int progtrackLocoId;
     static TPL2 * loopTask;

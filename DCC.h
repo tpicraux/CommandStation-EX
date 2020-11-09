@@ -62,7 +62,9 @@ class DCC
 public:
   static void begin(const __FlashStringHelper *motorShieldName, MotorDriver *mainDriver, MotorDriver *progDriver, byte timerNumber = 1);
   static void loop();
-
+  static void beginTPL(); // dummy if no TPL
+  static void loopTPL();  // dummy if no TPL
+   
   // Public DCC API functions
   static void setThrottle(uint16_t cab, uint8_t tSpeed, bool tDirection);
   static uint8_t getThrottleSpeed(int cab);

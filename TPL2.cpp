@@ -1,21 +1,32 @@
 #include <Arduino.h>
-#include <stdarg.h>
-#define DIAG_ENABLED true
 #include "TPL2.h"
 #include "TPL.h"
 #include "DCC.h"
 #include "DIAG.h"
 #include "Turnouts.h"
 #include "WiThrottle.h"
+#include "DCCEXParser.h"
 
 #include "TPLSensor.h"
 
+// Command parsing keywords
+const int HASH_KEYWORD_SCHEDULE=-9179;
+const int HASH_KEYWORD_RESERVE=11392;
+const int HASH_KEYWORD_FREE=-23052;
+const int HASH_KEYWORD_TL=2712;
+const int HASH_KEYWORD_TR=2694;
+const int HASH_KEYWORD_SET=27106;
+const int HASH_KEYWORD_RESET=26133;
+const int HASH_KEYWORD_PAUSE=-4142;
+const int HASH_KEYWORD_RESUME=27609;
+const int HASH_KEYWORD_STATUS=-25932;
 
 
 // Statics 
 byte TPL2::flags[MAX_FLAGS];
 byte TPL2::sensorCount;
 int TPL2::progtrackLocoId;
+
 
 TPL2 * TPL2::loopTask=NULL; // loopTask contains the address of ONE of the tasks in a ring.
 TPL2 * TPL2::pausingTask=NULL; // Task causing a PAUSE. 
@@ -39,7 +50,7 @@ TPL2::TPL2(byte route) {
         loopTask->next=this;
   }
   
-  DIAG(F("TPL2 created for Route %d at prog %d, next=%x, loopTask=%x\n"),route,progCounter,next,loopTask);
+  if (Diag::TPL) DIAG(F("\nTPL2 created for Route %d at prog %d, next=%x, loopTask=%x\n"),route,progCounter,next,loopTask);
 }
 TPL2::~TPL2() {
   if (next==this) loopTask=NULL;
@@ -60,15 +71,124 @@ int TPL2::locateRouteStart(short _route) {
   }
 }
 
-/* static */ void TPL2::begin(  
-                ) {
-
-    DIAG(F("\nTPL begin\n"));
- 
+/* static */ void TPL2::begin() {
+  DIAG(F("\nTPL begin\n"));
+  DCCEXParser::setFilter(TPL2::ComandFilter);
   new TPL2(0); // add the startup route
   WiThrottle::annotateLeftRight=true;  // Prefer left/Right to Open/Closed 
-
 }
+
+// This filter intercepst <> commands to do the following:
+// - Implement TPL specific commands/diagnostics 
+// - Reject/modify JMRI commands that would interfere with TPL processing 
+void TPL2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
+    (void)stream; // avoid compiler warning if we don't access this parameter
+
+    bool reject=false;
+    switch(opcode) {
+        
+     case 'S': // Reject all sensor commands
+     case 'Q': // Reject all sensor commands
+     case 'Z': // Reject all output commands
+     case 'E': // Reject all EEPROM commands
+     case 'e': // Reject all EEPROM commands
+          reject=true;
+          break;
+
+     case 'T':      
+           if (paramCount!=2) { // Reject all Turnout define/delete commands
+               reject=true;
+               break;
+           }
+           // TODO switch to TPL turnout handling
+           opcode=0;
+           break;
+
+      case 't': // THROTTLE <t [REGISTER] CAB SPEED DIRECTION>          
+          // TODO - Monitor throttle commands and reject any that are in current automation
+          break;
+          
+     case '/':  // New TPL command
+           reject=!parseSlash(stream,opcode,paramCount,p);
+          opcode=0;
+          break;
+          
+     default:  // other commands pass through 
+     break;       
+      }
+     if (reject) {
+      opcode=0;
+      StringFormatter::send(stream,F("<X>"));
+     }
+}
+     
+bool TPL2::parseSlash(Print * stream, byte & opcode, byte & paramCount, int p[]) {
+          
+          switch (p[0]) {
+            case HASH_KEYWORD_PAUSE: // </ PAUSE>
+                 if (paramCount!=1) return false;
+                 DCC::setThrottle(0,1,true);  // pause all locos on the track         
+                 pausingTask=(TPL2 *)1; // Impossible task address
+                 return true;
+                 
+            case HASH_KEYWORD_RESUME: // </ RESUME>
+                 if (paramCount!=1) return false;
+                 pausingTask=NULL;
+                 return true;
+                 
+            case HASH_KEYWORD_STATUS: // </STATUS>
+                 if (paramCount!=1) return false;
+                 // TODO  dump TPL task status list 
+                 return true;
+                 
+            case HASH_KEYWORD_SCHEDULE: // </ SCHEDULE cab route >
+                 if (paramCount!=3) return false;
+                 { 
+                  TPL2 * newt=new TPL2(p[2]);
+                  newt->loco=p[1];
+                  newt->speedo=0;
+                  newt->forward=true;
+                  newt->invert=false;
+                 }
+                 return true;
+                 
+            default:
+              break;
+          }
+          
+          // all other / commands take 1 parameter 0 to MAX_FLAGS-1     
+
+          if (paramCount!=1 || p[1]<0  || p[1]>=MAX_FLAGS) return false;
+
+          switch (p[0]) {     
+            case HASH_KEYWORD_RESERVE:  // force reserve a section
+                 flags[p[1]] |= SECTION_FLAG;
+                 return true;
+    
+            case HASH_KEYWORD_FREE:  // force free a section
+                 flags[p[1]] &= ~SECTION_FLAG;
+                 return true;
+                 
+            case HASH_KEYWORD_TL:  // force Turnout LEFT
+                 Turnout::activate(p[1], true);
+                 return true;
+                 
+            case HASH_KEYWORD_TR:  // Force Turnout RIGHT
+                 Turnout::activate(p[1], false);
+                  return true;
+                
+            case HASH_KEYWORD_SET:
+                 flags[p[1]] |= SENSOR_FLAG;
+                 return true;
+   
+            case HASH_KEYWORD_RESET:
+                 flags[p[1]] &= ~SENSOR_FLAG;
+                 return true;
+                  
+            default:
+                 return false;                 
+          }
+    }
 
 void TPL2::driveLoco(byte speed) {
      if (loco<0) return;  // Caution, allows broadcast! 
@@ -80,7 +200,7 @@ bool TPL2::readSensor(short id) {
   if (id>=MAX_FLAGS) return false;
   if (flags[id] & SENSOR_FLAG) return true; // sensor locked on by software
   bool s= TPLSensor::read(id); // real hardware sensor (false if not defined)
-  if (s) DIAG(F("\nSensor %d hit\n"),id);
+  if (s && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
   return s;
 }
 
@@ -105,7 +225,7 @@ void TPL2::skipIfBlock() {
 }
 
 void TPL2::setSignal(short num, bool go) {
-  DIAG(F("\n TPL Signal %d %S"), num, go ? F("Green") : F("Red"));
+  if (Diag::TPL) DIAG(F("\nTPL Signal %d %S"), num, go ? F("Green") : F("Red"));
   // TODO 
   }
 
@@ -196,7 +316,7 @@ void TPL2::loop2() {
       break;
 
     case OPCODE_PAUSE:
-         DCC::setThrottle(0,0,true);  // pause all locos on the track
+         DCC::setThrottle(0,1,true);  // pause all locos on the track
          pausingTask=this;
          break;
  
@@ -236,11 +356,7 @@ void TPL2::loop2() {
     case OPCODE_GREEN:
       setSignal(operand,true);
       break;
-    
-    case OPCODE_STOP:
-      driveLoco(0);
-      break;
-    
+       
     case OPCODE_FON:      
       DCC::setFn(loco,operand,true);
       break;
@@ -303,12 +419,12 @@ void TPL2::loop2() {
              speedo=0;
              forward=true;
              invert=false;
-             DIAG(F("\n SETLOCO %d \n"),loco);
+             if (Diag::TPL) DIAG(F("\nTPL SETLOCO %d \n"),loco);
             }
        break;
        
        case OPCODE_ROUTE:
-          DIAG(F("\n Starting Route %d\n"),operand);
+          if (Diag::TPL) DIAG(F("\nTPL Starting Route %d\n"),operand);
           break;
 
        case OPCODE_PAD:
@@ -316,7 +432,7 @@ void TPL2::loop2() {
        break;
     
     default:
-      DIAG(F("\nOpcode %d not supported\n"),opcode);
+      DIAG(F("\nTPL Opcode %d not supported\n"),opcode);
     }
     // Falling out of the switch means move on to the next opcode
     progCounter+=2;

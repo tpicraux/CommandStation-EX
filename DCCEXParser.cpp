@@ -48,7 +48,8 @@ const int HASH_KEYWORD_SLOW = -17209;
 const int HASH_KEYWORD_PROGBOOST = -6353;
 const int HASH_KEYWORD_EEPROM = -7168;
 const int HASH_KEYWORD_LIMIT = 27413;
-const int HASH_KEYWORD_ETHERNET = -30767;    
+const int HASH_KEYWORD_ETHERNET = -30767;
+const int HASH_KEYWORD_TPL=23368;    
 
 int DCCEXParser::stashP[MAX_PARAMS];
 bool DCCEXParser::stashBusy;
@@ -219,10 +220,16 @@ int DCCEXParser::splitHexValues(int result[MAX_PARAMS], const byte *cmd)
 }
 
 FILTER_CALLBACK DCCEXParser::filterCallback = 0;
+FILTER_CALLBACK DCCEXParser::filterTPLCallback = 0;
+
 AT_COMMAND_CALLBACK DCCEXParser::atCommandCallback = 0;
 void DCCEXParser::setFilter(FILTER_CALLBACK filter)
 {
     filterCallback = filter;
+}
+void DCCEXParser::setTPLFilter(FILTER_CALLBACK filter)
+{
+    filterTPLCallback = filter;
 }
 void DCCEXParser::setAtCommandCallback(AT_COMMAND_CALLBACK callback)
 {
@@ -244,7 +251,10 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
     if (filterCallback)
         filterCallback(stream, opcode, params, p);
 
-    // Functions return from this switch if complete, break from switch implies error <X> to send
+    if (filterTPLCallback)
+        filterTPLCallback(stream, opcode, params, p);
+
+// Functions return from this switch if complete, break from switch implies error <X> to send
     switch (opcode)
     {
     case '\0':
@@ -691,6 +701,10 @@ bool DCCEXParser::parseD(Print *stream, int params, int p[])
 
     case HASH_KEYWORD_WIT: // <D WIT ON/OFF>
         Diag::WITHROTTLE = onOff;
+        return true;
+
+    case HASH_KEYWORD_TPL: // <D TPL ON/OFF>
+        Diag::TPL = onOff;
         return true;
 
     case HASH_KEYWORD_DCC:
