@@ -13,16 +13,17 @@
 #include "EthernetInterface.h"
 #include "LCD_Implementation.h"
 #include "freeMemory.h"
-#include "TPL.h"
 
-#if __has_include ( "myRoutes.h")
-  #include "myRoutes.h"
-  #include "TPL2.h"
-  void TPL::begin() {TPL2::begin();}
-  void TPL::loop() {TPL2::loop();}
+#if __has_include ( "myTPL.h")
+  #include "TPL.h"
+  #include "TPLMacros.h"
+  #include "TPLLayout.h"
+  #include "myTPL.h"
+  void DCC::beginTPL() {TPL::begin();}
+  void DCC::loopTPL() {TPL::loop();}
 #else 
-  void TPL::begin(){};
-  void TPL::loop(){};
+  void DCC::beginTPL(){};
+  void DCC::loopTPL(){};
 #endif
 
 #endif

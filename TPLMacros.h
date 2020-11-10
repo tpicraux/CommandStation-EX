@@ -1,6 +1,16 @@
 #ifndef TPLMacros_H
 #define TPLMacros_H
 
+#define LAYOUT const  PROGMEM  byte TPLLayout::Layout[] = {
+#define I2CTURNOUT(id,left,right)               LAYOUT_I2CSERVO|LAYOUT_TURNOUT,id,left>>7,left&0x7F,right>>7,right&0x7F,
+#define DCCTURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC|LAYOUT_TURNOUT,id,addr>>7,addr&0x7F,subaddr,leftActive,
+#define PINTURNOUT(id,pin,leftActive)           LAYOUT_PIN|LAYOUT_TURNOUT,id,pin,leftActive,0,0,
+#define I2CSENSOR(id,pin,activeWhen)            LAYOUT_I2C|LAYOUT_SENSOR,id,pin,activeWhen,0,0,
+#define PINSENSOR(id,pin,activeWhen)            LAYOUT_PIN|LAYOUT_SENSOR,id,pin,activeWhen,0,0,
+#define I2COUTPUT(id,pin,activeWhen)            LAYOUT_I2C|LAYOUT_OUTPUT,id,pin,activeWhen,0,0,
+#define PINOUTPUT(id,pin,activeWhen)            LAYOUT_PIN|LAYOUT_OUTPUT,id,pin,activeWhen,0,0,
+#define ENDLAYOUT 0,0 };
+
 
 #define ROUTES const  PROGMEM  byte TPL::RouteCode[] = {
 #define ROUTE(id)  OPCODE_ROUTE, id, 
