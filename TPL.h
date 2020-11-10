@@ -36,7 +36,6 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
     void driveLoco(byte speedo);
     bool readSensor(short id);
     void skipIfBlock();
-    void setSignal(short num, bool go);
     bool readLoco();
     void showManual();
     void showProg(bool progOn);

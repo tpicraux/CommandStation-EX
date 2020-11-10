@@ -704,6 +704,7 @@ bool DCCEXParser::parseD(Print *stream, int params, int p[])
         return true;
 
     case HASH_KEYWORD_TPL: // <D TPL ON/OFF>
+        if (!filterTPLCallback) break; // TPL not active
         Diag::TPL = onOff;
         return true;
 

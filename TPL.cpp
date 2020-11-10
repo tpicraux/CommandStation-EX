@@ -6,7 +6,6 @@
 #include "WiThrottle.h"
 #include "DCCEXParser.h"
 
-#include "TPLSensor.h"
 
 // Command parsing keywords
 const int HASH_KEYWORD_SCHEDULE=-9179;
@@ -23,7 +22,7 @@ const int HASH_KEYWORD_STATUS=-25932;
 
 // Statics 
 byte TPL::flags[MAX_FLAGS];
-byte TPL::sensorCount;
+
 int TPL::progtrackLocoId;
 
 
@@ -89,8 +88,8 @@ void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]
     bool reject=false;
     switch(opcode) {
         
-     case 'S': // Reject all sensor commands
-     case 'Q': // Reject all sensor commands
+     case 'S': // Reject all JMRI sensor commands
+     case 'Q': // Reject all JMRI sensor commands
      case 'Z': // Reject all output commands
      case 'E': // Reject all EEPROM commands
      case 'e': // Reject all EEPROM commands
@@ -214,9 +213,9 @@ void TPL::driveLoco(byte speed) {
 bool TPL::readSensor(short id) {
   if (id>=MAX_FLAGS) return false;
   if (flags[id] & SENSOR_FLAG) return true; // sensor locked on by software
-  bool s= TPLSensor::read(id); // real hardware sensor (false if not defined)
-  if (s && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
-  return s;
+  short s= TPLLayout::getSensor(id); // real hardware sensor (-1 if not exists )
+  if (s==1 && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
+  return s==1;
 }
 
 void TPL::skipIfBlock() {
@@ -239,10 +238,7 @@ void TPL::skipIfBlock() {
   }
 }
 
-void TPL::setSignal(short num, bool go) {
-  if (Diag::TPL) DIAG(F("\nTPL Signal %d %S"), num, go ? F("Green") : F("Red"));
-  // TODO 
-  }
+
 
 /* static */ void TPL::readLocoCallback(int cv) {
      progtrackLocoId=cv;
@@ -365,11 +361,11 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
-      setSignal(operand,false);
+      TPLLayout::setSignal(operand,false);
       break;
     
     case OPCODE_GREEN:
-      setSignal(operand,true);
+      TPLLayout::setSignal(operand,true);
       break;
        
     case OPCODE_FON:      

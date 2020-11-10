@@ -1,12 +1,56 @@
 #include <Arduino.h>
 #include "TPLLayout.h"
 #include <DIO2.h>
+#include "PWMservoDriver.h"
 #include "DIAG.h"
+#include "DCC.h"
+
+Adafruit_MCP23017 * TPLLayout::mcp[4] = {NULL, NULL, NULL, NULL};
 
 void TPLLayout::begin() {
-  // TODO presets and pins and eeprom
-  }
-
+  // presets and pins and eeprom
+   for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
+      byte tech=pgm_read_byte_near(Layout+slot) & LAYOUT_TECHNOLOGY_MASK;
+      if (!tech) break;
+      switch (tech) {
+        case LAYOUT_I2CPIN_IN:
+        case LAYOUT_I2CPIN_OUT:
+             {
+              byte pin=pgm_read_byte_near(Layout+slot+2);
+              byte board = pin / 16;
+              byte subPin = pin % 16;
+              if (!mcp[board]) {
+                  mcp[board] = new  Adafruit_MCP23017();
+                  mcp[board]->begin(board);      // use default address 0
+              }
+              if (tech==LAYOUT_I2CPIN_IN) {
+                mcp[board]->pinMode(subPin, INPUT);
+                mcp[board]->pullUp(subPin, HIGH);
+              }
+              else  mcp[board]->pinMode(subPin, OUTPUT);                                 
+             }
+             break;
+        case LAYOUT_PIN_IN:
+             {
+              byte pin=pgm_read_byte_near(Layout+slot+2);
+              pinMode(pin,INPUT_PULLUP);
+             }
+             break;
+        case LAYOUT_PIN_OUT:
+             {
+              byte pin=pgm_read_byte_near(Layout+slot+2);
+              pinMode(pin,OUTPUT);
+             }
+             break;
+        
+        case LAYOUT_I2CSERVO:
+             // TODO
+        default: break;
+      }
+   }
+      
+}
+   
 bool TPLLayout::setTurnout(byte id, bool left) {
   int slot=getSlot(LAYOUT_TURNOUT,id);
   if (slot<0) {
@@ -19,8 +63,8 @@ bool TPLLayout::setTurnout(byte id, bool left) {
     case LAYOUT_I2CSERVO:  //tech, id, pin, leftAngle, rightAngle
         {
          byte pin=pgm_read_byte_near(Layout+slot+2);
-         int angle=pgm_read_word_near(Layout+slot+3 + left?0:2);
-         // TODO set serveo turnout (pin,angle)
+         uint16_t angle=pgm_read_word_near(Layout+slot+3 + left?0:2);
+         PWMServoDriver::setServo(pin,angle);
         }
         break;
     
@@ -29,21 +73,21 @@ bool TPLLayout::setTurnout(byte id, bool left) {
           int addr=pgm_read_word_near(Layout+slot+2);
           byte subaddr=pgm_read_byte_near(Layout+slot+4);
           byte leftIsActive=pgm_read_byte_near(Layout+slot+5);
-          // TODO send DCC turnout addr,subaddr, leftIsActive?left:!left);
+          DCC::setAccessory(addr,subaddr, leftIsActive?left:!left);
         }
         break;
          
-    case LAYOUT_I2CPIN:  // tech, id, leftpin, rightpin
+    case LAYOUT_I2CPIN_OUT:  // tech, id, leftpin, rightpin
         {
           byte pin=pgm_read_byte_near(Layout+slot+left?2:3);
-          // TODO setI2cPin(pin);
+          mcp[pin / 16]->digitalWrite(pin % 16,LOW);          
         }
         break;
         
-    case LAYOUT_PIN:  // tech, id, leftpin, rightpin
+    case LAYOUT_PIN_OUT:  // tech, id, leftpin, rightpin
         {
           byte pin=pgm_read_byte_near(Layout+slot+left?2:3);
-          // TODO digitalWrite(pin,LOW);
+          digitalWrite2(pin,LOW);
         }
         break;
 
@@ -61,9 +105,9 @@ int TPLLayout::getSensor(byte id) {
    byte pin=pgm_read_byte_near(Layout+slot+2);
    bool invert=pgm_read_byte_near(Layout+slot+3);
    switch (tech) {
-     case LAYOUT_I2CPIN:
-          return  false; // TODO i2csensor(pin) ^ invert;
-     case LAYOUT_PIN:
+     case LAYOUT_I2CPIN_IN:
+          return  mcp[pin / 16]->digitalRead(pin % 16) ^ invert;
+     case LAYOUT_PIN_IN:
           return  (digitalRead2(pin)==LOW) ^ invert;
      default: 
           return -1;
@@ -78,10 +122,10 @@ bool TPLLayout::setOutput(byte id, bool on) {
    byte pin=pgm_read_byte_near(Layout+slot+2);
    bool invert=pgm_read_byte_near(Layout+slot+3);
    switch (tech) {
-     case LAYOUT_I2CPIN:
-          // TODO seti2cpin(pin, on ^ invert;
+     case LAYOUT_I2CPIN_OUT:
+          mcp[pin / 16]->digitalWrite(pin % 16,on ^ invert);
           break;
-     case LAYOUT_PIN:
+     case LAYOUT_PIN_OUT:
           digitalWrite2(pin, (on ^ invert)?LOW:HIGH);
           break;
      default: 
