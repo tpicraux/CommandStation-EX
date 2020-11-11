@@ -47,7 +47,15 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
   static const short SIGNAL_FLAG_RED = 0x04;
   static const short SIGNAL_FLAG_GREEN = 0x08; // AMBER = red + green
   static const short TURNOUT_FLAG = 0x10;
-  static const short MAX_FLAGS=256;
+
+#if (defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_SAMD_ZERO))
+   static const short MAX_FLAGS=256;
+   #define PROTECT_FLAGS // No protection needed
+#else
+  static const short MAX_FLAGS=64;
+  #define PROTECT_FLAGS if(operand>=MAX_FLAGS) break; // ignore operands that would crash the flags
+#endif
+
   static byte flags[MAX_FLAGS];
   static const  PROGMEM  byte RouteCode[];
  

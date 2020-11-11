@@ -272,11 +272,13 @@ void TPL::loop2() {
   switch (opcode) {
     
     case OPCODE_TL:
+         PROTECT_FLAGS
          TPLLayout::setTurnout(operand, true);
          flags[operand] |= TURNOUT_FLAG;
          break;
           
     case OPCODE_TR:
+         PROTECT_FLAGS
          TPLLayout::setTurnout(operand, false);
          flags[operand] &= ~TURNOUT_FLAG;
          break; 
@@ -301,7 +303,8 @@ void TPL::loop2() {
       break;
       
     case OPCODE_RESERVE:
-      if (flags[operand] & SECTION_FLAG) {
+        PROTECT_FLAGS
+        if (flags[operand] & SECTION_FLAG) {
         driveLoco(0);
         delayMe(500);
         return;
@@ -310,15 +313,18 @@ void TPL::loop2() {
       break;
     
     case OPCODE_FREE:
+      PROTECT_FLAGS
       flags[operand] &= ~SECTION_FLAG;
       break;
     
     case OPCODE_AT:
+      PROTECT_FLAGS
       if (readSensor(operand)) break;
       delayMe(50);
       return;
     
     case OPCODE_AFTER: // waits for sensor to hit and then remain off for 0.5 seconds. (must come after an AT operation)
+      PROTECT_FLAGS
       if (readSensor(operand)) {
         // reset timer to half a second and keep waiting
         waitAfter=millis();
@@ -328,10 +334,12 @@ void TPL::loop2() {
       break;
     
     case OPCODE_SET:
+      PROTECT_FLAGS
       flags[operand] |= SENSOR_FLAG;
       break;
     
     case OPCODE_RESET:
+      PROTECT_FLAGS
       flags[operand] &= ~SENSOR_FLAG;
       break;
 
@@ -347,10 +355,12 @@ void TPL::loop2() {
           break;        
     
     case OPCODE_IF: // do next operand if sensor set
+      PROTECT_FLAGS
       if (!readSensor(operand)) skipIfBlock();
       break;
     
     case OPCODE_IFNOT: // do next operand if sensor not set
+      PROTECT_FLAGS
       if (readSensor(operand)) skipIfBlock();
       break;
    
@@ -370,18 +380,21 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
+      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'R');
       flags[operand] &= ~SIGNAL_FLAG_GREEN;
       flags[operand] |= SIGNAL_FLAG_RED;
       break;
     
     case OPCODE_AMBER:
+      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'A');
       flags[operand] |= SIGNAL_FLAG_GREEN;
       flags[operand] |= SIGNAL_FLAG_RED;
       break;
     
     case OPCODE_GREEN:
+      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'G');
       flags[operand] &= ~SIGNAL_FLAG_RED;
       flags[operand] |= SIGNAL_FLAG_GREEN;
