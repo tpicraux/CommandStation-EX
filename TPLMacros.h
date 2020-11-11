@@ -2,13 +2,16 @@
 #define TPLMacros_H
 
 #define LAYOUT const  PROGMEM  byte TPLLayout::Layout[] = {
-#define I2CTURNOUT(id,pin,left,right)           LAYOUT_I2CSERVO|LAYOUT_TURNOUT,id,pin,left>>7,left&0x7F,right>>7,right&0x7F,
-#define DCCTURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC|LAYOUT_TURNOUT,id,addr>>7,addr&0x7F,subaddr,leftActive,0
-#define PINTURNOUT(id,pin,leftActive)           LAYOUT_PIN_OUT|LAYOUT_TURNOUT,id,pin,leftActive,0,0,0
-#define I2CSENSOR(id,pin,activeWhen)            LAYOUT_I2CPIN_IN|LAYOUT_SENSOR,id,pin,activeWhen,0,0,0
-#define PINSENSOR(id,pin,activeWhen)            LAYOUT_PIN_IN|LAYOUT_SENSOR,id,pin,activeWhen,0,0,0
-#define I2COUTPUT(id,pin,activeWhen)            LAYOUT_I2CPIN_OUT|LAYOUT_OUTPUT,id,pin,activeWhen,0,0,0
-#define PINOUTPUT(id,pin,activeWhen)            LAYOUT_PIN_OUTPUT|LAYOUT_OUTPUT,id,pin,activeWhen,0,0,0
+#define SERVO_TURNOUT(id,pin,left,right)         LAYOUT_SERVO_TURNOUT,id,pin,left>>7,left&0x7F,right>>7,right&0x7F,
+#define DCC_TURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC_TURNOUT,id,addr>>7,addr&0x7F,subaddr,leftActive,0
+#define PIN_TURNOUT(id,pin,leftActive)           LAYOUT_PIN_TURNOUT,id,pin,leftActive,0,0,0
+#define I2CPIN_TURNOUT(id,pin,leftActive)        LAYOUT_I2CPIN_TURNOUT,id,pin,leftActive,0,0,0
+#define I2C_SENSOR(id,pin,activeWhen)            LAYOUT_I2C_SENSOR,id,pin,activeWhen,0,0,0
+#define PIN_SENSOR(id,pin,activeWhen)            LAYOUT_PIN_SENSOR,id,pin,activeWhen,0,0,0
+#define I2C_OUTPUT(id,pin,activeWhen)            LAYOUT_I2C_OUTPUT,id,pin,activeWhen,0,0,0
+#define PIN_OUTPUT(id,pin,activeWhen)            LAYOUT_PIN_OUTPUT,id,pin,activeWhen,0,0,0
+#define I2C_SIGNAL(id,pinRed,pinGreen,pinAmber)  LAYOUT_I2C_SIGNAL,id,pinRed,pinGreen,pinAmber,0,0
+#define PIN_SIGNAL(id,pinRed,pinGreen,pinAmber)  LAYOUT_PIN_SIGNAL,id,pinRed,pinGreen,pinAmber,0,0
 #define ENDLAYOUT 0,0 };
 
 
