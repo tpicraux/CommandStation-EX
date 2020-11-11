@@ -8,7 +8,7 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
              OPCODE_IF,OPCODE_IFNOT,OPCODE_ENDIF,OPCODE_IFRANDOM,
              OPCODE_DELAY,OPCODE_RANDWAIT,
              OPCODE_FON, OPCODE_FOFF,
-             OPCODE_RED,OPCODE_GREEN,
+             OPCODE_RED,OPCODE_GREEN,OPCODE_AMBER,
              OPCODE_PAD,OPCODE_FOLLOW,OPCODE_ENDROUTE,
              OPCODE_PROGTRACK,OPCODE_READ_LOCO1,OPCODE_READ_LOCO2,
              OPCODE_SCHEDULE,OPCODE_SETLOCO,
@@ -44,10 +44,11 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
    
   static const short SECTION_FLAG = 0x01;
   static const short SENSOR_FLAG = 0x02;
-  static const short SIGNAL_FLAG = 0x04;
-  static const short MAX_FLAGS=128;
+  static const short SIGNAL_FLAG_RED = 0x04;
+  static const short SIGNAL_FLAG_GREEN = 0x08; // AMBER = red + green
+  static const short TURNOUT_FLAG = 0x10;
+  static const short MAX_FLAGS=256;
   static byte flags[MAX_FLAGS];
-  static byte sensorCount;
   static const  PROGMEM  byte RouteCode[];
  
  

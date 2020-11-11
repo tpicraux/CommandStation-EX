@@ -157,10 +157,26 @@ bool TPLLayout::setOutput(byte id, bool on) {
 }
 
 
-bool TPLLayout::setSignal(byte id, bool red){
-  // TODO
-  (void)id;
-  (void)red; 
+bool TPLLayout::setSignal(byte id, char rga){
+  int slot=getSlot(LAYOUT_TYPE_OUTPUT,id);
+  if (slot<0) return false; // missing outputs are just virtual
+   byte tech=pgm_read_byte_near(Layout+slot+1);
+   byte pin[3];
+   pin[0]=pgm_read_byte_near(Layout+slot+2);
+   pin[1]=pgm_read_byte_near(Layout+slot+3);
+   pin[2]=pgm_read_byte_near(Layout+slot+4);
+   switch (tech) {
+      case LAYOUT_I2C_SIGNAL:
+           mcp[pin[0] / 16]->digitalWrite(pin[0] % 16,rga=='R'?LOW:HIGH);          
+           mcp[pin[1] / 16]->digitalWrite(pin[1] % 16,rga=='G'?LOW:HIGH);          
+           mcp[pin[2] / 16]->digitalWrite(pin[2] % 16,rga=='A'?LOW:HIGH);          
+           break;
+      case LAYOUT_PIN_SIGNAL:
+           digitalWrite2(pin[0],rga=='R'?LOW:HIGH);          
+           digitalWrite2(pin[1],rga=='G'?LOW:HIGH);          
+           digitalWrite2(pin[2],rga=='A'?LOW:HIGH);          
+           break;
+   } 
   return true;
 }
 

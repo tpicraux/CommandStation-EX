@@ -35,7 +35,7 @@ class TPLLayout {
      static bool setTurnout(byte id, bool left);
      static int getSensor(byte id);
      static bool setOutput(byte id, bool on);
-     static bool setSignal(byte id, bool red);
+     static bool setSignal(byte id, char RGA);
      static const  PROGMEM  byte Layout[]; 
   private:
      static int getSlot(byte type, byte id);

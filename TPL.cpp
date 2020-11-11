@@ -185,10 +185,12 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                  
             case HASH_KEYWORD_TL:  // force Turnout LEFT
                  TPLLayout::setTurnout(p[1], true);
+                 flags[p[1]] |= TURNOUT_FLAG;
                  return true;
                  
             case HASH_KEYWORD_TR:  // Force Turnout RIGHT
                  TPLLayout::setTurnout(p[1], false);
+                 flags[p[1]] &= ~TURNOUT_FLAG;
                  return true;
                 
             case HASH_KEYWORD_SET:
@@ -270,8 +272,13 @@ void TPL::loop2() {
   switch (opcode) {
     
     case OPCODE_TL:
+         TPLLayout::setTurnout(operand, true);
+         flags[operand] |= TURNOUT_FLAG;
+         break;
+          
     case OPCODE_TR:
-         TPLLayout::setTurnout(operand, opcode==OPCODE_TL);
+         TPLLayout::setTurnout(operand, false);
+         flags[operand] &= ~TURNOUT_FLAG;
          break; 
     
     case OPCODE_REV:
@@ -290,11 +297,13 @@ void TPL::loop2() {
     
     case OPCODE_INVERT_DIRECTION:
       invert= !invert;
+      driveLoco(speedo);
       break;
       
     case OPCODE_RESERVE:
       if (flags[operand] & SECTION_FLAG) {
         driveLoco(0);
+        delayMe(500);
         return;
       }
       flags[operand] |= SECTION_FLAG;
@@ -361,11 +370,22 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
-      TPLLayout::setSignal(operand,false);
+      TPLLayout::setSignal(operand,'R');
+      flags[operand] &= ~SIGNAL_FLAG_GREEN;
+      flags[operand] |= SIGNAL_FLAG_RED;
+      break;
+    
+    case OPCODE_AMBER:
+      TPLLayout::setSignal(operand,'A');
+      flags[operand] |= SIGNAL_FLAG_GREEN;
+      flags[operand] |= SIGNAL_FLAG_RED;
       break;
     
     case OPCODE_GREEN:
-      TPLLayout::setSignal(operand,true);
+      TPLLayout::setSignal(operand,'G');
+      flags[operand] &= ~SIGNAL_FLAG_RED;
+      flags[operand] |= SIGNAL_FLAG_GREEN;
+
       break;
        
     case OPCODE_FON:      
@@ -403,7 +423,10 @@ void TPL::loop2() {
        break;
       
       case OPCODE_READ_LOCO2:
-       if (progtrackLocoId<0) return; // still waiting for callback
+       if (progtrackLocoId<0) {
+        delayMe(100);
+        return; // still waiting for callback
+       }
        loco=progtrackLocoId;
        speedo=0;
        forward=true;
