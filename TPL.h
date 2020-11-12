@@ -23,6 +23,7 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
     static void loop();
     TPL(byte route);
     ~TPL();
+    static void setFlag(byte id,byte onMask, byte OffMask);    
     static void readLocoCallback(int cv);
   private: 
     static void ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]);
@@ -41,19 +42,19 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
     void showProg(bool progOn);
     bool doManual();
     void loop2();          
-   
+    
   static const short SECTION_FLAG = 0x01;
   static const short SENSOR_FLAG = 0x02;
   static const short SIGNAL_FLAG_RED = 0x04;
   static const short SIGNAL_FLAG_GREEN = 0x08; // AMBER = red + green
-  static const short TURNOUT_FLAG = 0x10;
+  static const short SIGNAL_FLAG_AMBER = SIGNAL_FLAG_RED | SIGNAL_FLAG_GREEN;
+  static const short TURNOUT_FLAG_LEFT = 0x10;
+  static const short TURNOUT_FLAG_RIGHT = 0x20;
 
 #if (defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_SAMD_ZERO))
    static const short MAX_FLAGS=256;
-   #define PROTECT_FLAGS // No protection needed
 #else
   static const short MAX_FLAGS=64;
-  #define PROTECT_FLAGS if(operand>=MAX_FLAGS) break; // ignore operands that would crash the flags
 #endif
 
   static byte flags[MAX_FLAGS];

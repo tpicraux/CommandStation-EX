@@ -153,18 +153,37 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                       if (task==loopTask) break;      
                     }                            
                  }
+                 for (int i=0;i<MAX_FLAGS; i++) {
+                   byte flag=flags[i];
+                   if (flag) {
+                     StringFormatter::send(stream,F("\nid=%d "),i);
+                     if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
+                     if (flag & TURNOUT_FLAG_LEFT) StringFormatter::send(stream,F(" TL"));
+                     if (flag & TURNOUT_FLAG_RIGHT) StringFormatter::send(stream,F(" TR"));
+                     if (flag & SENSOR_FLAG) StringFormatter::send(stream,F(" SET"));
+                     if (flag & SIGNAL_FLAG_AMBER ==SIGNAL_FLAG_AMBER) 
+                          StringFormatter::send(stream,F(" AMBER"));
+                     else if (flag & SIGNAL_FLAG_RED) 
+                          StringFormatter::send(stream,F(" RED"));
+                     else if (flag & SIGNAL_FLAG_GREEN) 
+                          StringFormatter::send(stream,F(" GREEN"));
+                          
+                   }
+                   StringFormatter::send(stream,F("\n"));
+                 
+                 }
                  return true;
                  
-            case HASH_KEYWORD_SCHEDULE: // </ SCHEDULE cab route >
-                 if (paramCount!=3) return false;
-                 { 
-                  TPL * newt=new TPL(p[2]);
-                  newt->loco=p[1];
+            case HASH_KEYWORD_SCHEDULE: // </ SCHEDULE [cab] route >
+                 if (paramCount<2 || paramCount>3) return false;
+                 {                 
+                  TPL * newt=new TPL((paramCount==2) ? p[1] : p[2]);
+                  newt->loco=(paramCount==2)? 0 : p[1];                    
                   newt->speedo=0;
                   newt->forward=true;
                   newt->invert=false;
                  }
-                 return true;
+              return true;
                  
             default:
               break;
@@ -176,35 +195,46 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
 
           switch (p[0]) {     
             case HASH_KEYWORD_RESERVE:  // force reserve a section
-                 flags[p[1]] |= SECTION_FLAG;
+                 setFlag(p[1],SECTION_FLAG,0);
                  return true;
     
             case HASH_KEYWORD_FREE:  // force free a section
-                 flags[p[1]] &= ~SECTION_FLAG;
+                 setFlag(p[1],0,SECTION_FLAG);
                  return true;
                  
             case HASH_KEYWORD_TL:  // force Turnout LEFT
                  TPLLayout::setTurnout(p[1], true);
-                 flags[p[1]] |= TURNOUT_FLAG;
-                 return true;
+                 setFlag(p[1], TURNOUT_FLAG_LEFT, TURNOUT_FLAG_RIGHT);
+                return true;
                  
             case HASH_KEYWORD_TR:  // Force Turnout RIGHT
                  TPLLayout::setTurnout(p[1], false);
-                 flags[p[1]] &= ~TURNOUT_FLAG;
+                 setFlag(p[1], TURNOUT_FLAG_RIGHT, TURNOUT_FLAG_LEFT);
                  return true;
                 
             case HASH_KEYWORD_SET:
-                 flags[p[1]] |= SENSOR_FLAG;
+                 setFlag(p[1], SENSOR_FLAG,0);
                  return true;
    
             case HASH_KEYWORD_RESET:
-                 flags[p[1]] &= ~SENSOR_FLAG;
+                 setFlag(p[1], 0, SENSOR_FLAG);
                  return true;
                   
             default:
                  return false;                 
           }
     }
+
+void TPL::setFlag(byte id,byte onMask, byte offMask) {
+   if (id>=MAX_FLAGS) return; // Outside UNO range limit
+   byte f=flags[id];
+   f &= ~offMask;
+   f |= onMask;
+   if (f!=flags[id]) {
+       flags[id]=f;
+       // TODO EEPROM STORE FLAG STATE
+   }
+}
 
 void TPL::driveLoco(byte speed) {
      if (loco<0) return;  // Caution, allows broadcast! 
@@ -272,15 +302,13 @@ void TPL::loop2() {
   switch (opcode) {
     
     case OPCODE_TL:
-         PROTECT_FLAGS
          TPLLayout::setTurnout(operand, true);
-         flags[operand] |= TURNOUT_FLAG;
+         setFlag( operand, TURNOUT_FLAG_LEFT, TURNOUT_FLAG_RIGHT);
          break;
           
     case OPCODE_TR:
-         PROTECT_FLAGS
          TPLLayout::setTurnout(operand, false);
-         flags[operand] &= ~TURNOUT_FLAG;
+         setFlag( operand, TURNOUT_FLAG_RIGHT, TURNOUT_FLAG_LEFT);
          break; 
     
     case OPCODE_REV:
@@ -303,28 +331,25 @@ void TPL::loop2() {
       break;
       
     case OPCODE_RESERVE:
-        PROTECT_FLAGS
+        if (operand>=MAX_FLAGS) break; // CAUTION reserve will not be done
         if (flags[operand] & SECTION_FLAG) {
         driveLoco(0);
         delayMe(500);
         return;
       }
-      flags[operand] |= SECTION_FLAG;
+      setFlag(operand,SECTION_FLAG,0);
       break;
     
     case OPCODE_FREE:
-      PROTECT_FLAGS
-      flags[operand] &= ~SECTION_FLAG;
+      setFlag(operand,0,SECTION_FLAG);
       break;
     
     case OPCODE_AT:
-      PROTECT_FLAGS
       if (readSensor(operand)) break;
       delayMe(50);
       return;
     
     case OPCODE_AFTER: // waits for sensor to hit and then remain off for 0.5 seconds. (must come after an AT operation)
-      PROTECT_FLAGS
       if (readSensor(operand)) {
         // reset timer to half a second and keep waiting
         waitAfter=millis();
@@ -334,13 +359,11 @@ void TPL::loop2() {
       break;
     
     case OPCODE_SET:
-      PROTECT_FLAGS
-      flags[operand] |= SENSOR_FLAG;
+      setFlag(operand,SENSOR_FLAG,0);
       break;
     
     case OPCODE_RESET:
-      PROTECT_FLAGS
-      flags[operand] &= ~SENSOR_FLAG;
+      setFlag(operand,0,SENSOR_FLAG);
       break;
 
     case OPCODE_PAUSE:
@@ -355,12 +378,10 @@ void TPL::loop2() {
           break;        
     
     case OPCODE_IF: // do next operand if sensor set
-      PROTECT_FLAGS
       if (!readSensor(operand)) skipIfBlock();
       break;
     
     case OPCODE_IFNOT: // do next operand if sensor not set
-      PROTECT_FLAGS
       if (readSensor(operand)) skipIfBlock();
       break;
    
@@ -380,25 +401,18 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
-      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'R');
-      flags[operand] &= ~SIGNAL_FLAG_GREEN;
-      flags[operand] |= SIGNAL_FLAG_RED;
+      setFlag(operand,SIGNAL_FLAG_RED,SIGNAL_FLAG_GREEN);
       break;
     
     case OPCODE_AMBER:
-      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'A');
-      flags[operand] |= SIGNAL_FLAG_GREEN;
-      flags[operand] |= SIGNAL_FLAG_RED;
+      setFlag(operand,SIGNAL_FLAG_AMBER,0);
       break;
     
     case OPCODE_GREEN:
-      PROTECT_FLAGS
       TPLLayout::setSignal(operand,'G');
-      flags[operand] &= ~SIGNAL_FLAG_RED;
-      flags[operand] |= SIGNAL_FLAG_GREEN;
-
+      setFlag(operand,SIGNAL_FLAG_GREEN,SIGNAL_FLAG_RED);      
       break;
        
     case OPCODE_FON:      
