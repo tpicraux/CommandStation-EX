@@ -5,10 +5,12 @@
  * Supports Serial and nRF2401 Radio Communicataions
  * 
  */
-#ifndef NetworkFunctions_h
-#define NetworkFunctions_h
+//#ifndef NetworkFunctions_h
+//#define NetworkFunctions_h
 
-typedef struct PKT_DEF {
+const uint16_t this_node = 00; 
+
+struct PKT_DEF {
   String function;
   String option;
   String data;
@@ -88,4 +90,4 @@ void sendPacket(uint16_t to_node, String function, String option, String data){
   sendMessage(to_node, message.c_str(), message.length());
 }
 
-#endif
+//#endif

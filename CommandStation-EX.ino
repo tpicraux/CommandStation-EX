@@ -24,7 +24,7 @@
 #define NUM_CHILDREN 1
 
 // RF24 Node Addresses
-const uint16_t this_node = 00; 
+//const uint16_t this_node = 00; 
 // Children
 const uint16_t node_05 = 05;
 uint16_t children[NUM_CHILDREN] = {node_05};
@@ -44,6 +44,7 @@ void RF24filter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
     if (opcode=='T' && paramCount==2) {  // look for command of format: <T id 1/0>  
        //  This checks if a turnout was created. To bypass check, remove these 2 lines
        //  and the include for Turnouts.h above
+       DIAG(F("\nGot T\n"));
        Turnout * tt= Turnout::get(p[0]); // Locate turnout definition 
        if (!tt) return; // No turnout found
        
@@ -56,6 +57,7 @@ void RF24filter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
        strcat(data,p[1]==1?"/1":"/2"); // build the command. p[0] is id, p[1] is throw/close
        result = network.write(header, data, strlen(data));     
        // StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, p[1]);
+       DIAG(F("data: %s"),data);
        if (result){
          StringFormatter::send(stream, F("<H %d %d>"), p[0], p[1]);
        }
@@ -127,6 +129,7 @@ void loop()
 // Function- 1=Turnout Control  2 = Signalling  3 = Indicators 255 = testing
 // option- ID param
 // data- ID result
+/*
   String function, option, data;
   PKT_DEF pkt = pollNet();
   String delimiter = F("/"); // Packet delimiter character
@@ -146,6 +149,7 @@ void loop()
         break;
     }
   }
+  */
   // The main sketch has responsibilities during loop()
 
   // Responsibility 1: Handle DCC background processes

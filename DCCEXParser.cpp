@@ -138,7 +138,7 @@ int DCCEXParser::splitValues(int result[MAX_PARAMS], const byte *cmd)
             if (hot >= '0' && hot <= '9')
             {
                 runningValue = 10 * runningValue + (hot - '0');
-                break;tur
+                break;
             }
             if (hot >= 'A' && hot <= 'Z')
             {
