@@ -21,13 +21,13 @@
 // RF24 System Identifiers
 #define SYS_ID "Master Control Node"
 #define NODE_CMD_VERSION "1.001.001"
-#define NUM_CHILDREN 1
+#define NUM_CHILDREN 2
 
 // RF24 Node Addresses
-//const uint16_t this_node = 00; 
-// Children
-const uint16_t node_05 = 05;
-uint16_t children[NUM_CHILDREN] = {node_05};
+const uint16_t node_01 = 01;
+const uint16_t node_11 = 011;
+uint16_t children[NUM_CHILDREN] = {node_01,node_11};
+
 
 // more RF24 Feature setup
 RF24 radio(9, 10);               // nRF24L01 (CE,CSN)
@@ -44,20 +44,19 @@ void RF24filter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
     if (opcode=='T' && paramCount==2) {  // look for command of format: <T id 1/0>  
        //  This checks if a turnout was created. To bypass check, remove these 2 lines
        //  and the include for Turnouts.h above
-       DIAG(F("\nGot T\n"));
        Turnout * tt= Turnout::get(p[0]); // Locate turnout definition 
        if (!tt) return; // No turnout found
        
        // You have access to tt->data.address and tt->subAddress 
 
-       // I'm guessing that the Node is constant here 
-       RF24NetworkHeader header(this_node);
        char data[20]="/1/";
        itoa(p[0],data+3,10); // convert int to string. Is there an override of rf24 functions to avoid this?
        strcat(data,p[1]==1?"/1":"/2"); // build the command. p[0] is id, p[1] is throw/close
-       result = network.write(header, data, strlen(data));     
-       // StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, p[1]);
-       DIAG(F("data: %s"),data);
+       RF24NetworkHeader header_1(node_01);
+       result = network.write(header_1, data, strlen(data));
+       RF24NetworkHeader header_11(node_11);
+       network.write(header_11, data, strlen(data));
+       //DIAG(F("data: %s\n"),data); // uncomment to see send packet
        if (result){
          StringFormatter::send(stream, F("<H %d %d>"), p[0], p[1]);
        }
@@ -73,6 +72,12 @@ void RF24filter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
 // This supports JMRI or manual diagnostics and commands
 // to be issued from the USB serial console.
 DCCEXParser serialParser;
+
+// *************** NEW DEBUG ******************
+struct payload_t {                 // Structure of our payload
+  unsigned long ms;
+  unsigned long counter;
+};
 
 void setup()
 {
@@ -114,22 +119,22 @@ void setup()
   randomSeed(analogRead(A7));
   Serial.println(String(F(SYS_ID)) + String(F(" - SW:")) + String(F(VERSION)));
   Serial.println(F("RF24 start")); 
+  
   SPI.begin();
   radio.begin();
   network.begin(90, this_node); //(channel, node address)
   radio.setDataRate(RF24_2MBPS); // Max baud rate
   String readytxt = String(F("Ready @ node ")) + String(this_node, OCT);
   Serial.println(readytxt);
+  radio.printDetails(); // debug
 }
 
-void loop()
-{
+void loop() {
 
 // poll the network. if no actual packet, pkt.function == "0"
 // Function- 1=Turnout Control  2 = Signalling  3 = Indicators 255 = testing
 // option- ID param
 // data- ID result
-/*
   String function, option, data;
   PKT_DEF pkt = pollNet();
   String delimiter = F("/"); // Packet delimiter character
@@ -149,7 +154,7 @@ void loop()
         break;
     }
   }
-  */
+
   // The main sketch has responsibilities during loop()
 
   // Responsibility 1: Handle DCC background processes
