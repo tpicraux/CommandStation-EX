@@ -8,6 +8,8 @@
 
 
 // Command parsing keywords
+const int HASH_KEYWORD_TPL=23368;    
+const int HASH_KEYWORD_ON = 2657;
 const int HASH_KEYWORD_SCHEDULE=-9179;
 const int HASH_KEYWORD_RESERVE=11392;
 const int HASH_KEYWORD_FREE=-23052;
@@ -96,6 +98,13 @@ void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]
      case 'e': // Reject all EEPROM commands
           reject=true;
           break;
+
+     case 'D':
+        if (p[0]==HASH_KEYWORD_TPL) { // <D TPL ON/OFF>
+           Diag::TPL = paramCount==2 && (p[1]==HASH_KEYWORD_ON || p[1]==1);
+           opcode=0;
+        }
+        break;
 
      case 'T':      
            if (paramCount!=2) { // Reject all Turnout define/delete commands
