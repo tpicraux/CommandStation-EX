@@ -2,8 +2,8 @@
 #define TPLMacros_H
 
 #define LAYOUT const  PROGMEM  byte TPLLayout::Layout[] = {
-#define SERVO_TURNOUT(id,pin,left,right)         LAYOUT_SERVO_TURNOUT,id,pin,left>>7,left&0x7F,right>>7,right&0x7F,
-#define DCC_TURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC_TURNOUT,id,addr>>7,addr&0x7F,subaddr,leftActive,0
+#define SERVO_TURNOUT(id,pin,left,right)         LAYOUT_SERVO_TURNOUT,id,pin,left&0xFF,left>>8,right&0xFF,right>>8,
+#define DCC_TURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC_TURNOUT,id,,addr&0xFF,addr>>8,subaddr,leftActive,0
 #define PIN_TURNOUT(id,pin,leftActive)           LAYOUT_PIN_TURNOUT,id,pin,leftActive,0,0,0
 #define I2CPIN_TURNOUT(id,pin,leftActive)        LAYOUT_I2CPIN_TURNOUT,id,pin,leftActive,0,0,0
 #define I2C_SENSOR(id,pin,activeWhen)            LAYOUT_I2C_SENSOR,id,pin,activeWhen,0,0,0

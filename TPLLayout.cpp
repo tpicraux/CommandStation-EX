@@ -10,7 +10,8 @@ Adafruit_MCP23017 * TPLLayout::mcp[4] = {NULL, NULL, NULL, NULL};
 void TPLLayout::begin() {
   // presets and pins and eeprom
    for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
-      byte tech=pgm_read_byte_near(Layout+slot+1);
+      byte tech=pgm_read_byte_near(Layout+slot);
+      DIAG(F("\nLayout %x"),tech);
       if (!tech) break;
       switch (tech) {
         case LAYOUT_SERVO_TURNOUT:
@@ -77,7 +78,7 @@ bool TPLLayout::setTurnout(byte id, bool left) {
           return false;
           }
           
-   switch (pgm_read_byte_near(Layout+slot+1)) {
+   switch (pgm_read_byte_near(Layout+slot)) {
     case LAYOUT_SERVO_TURNOUT:  //tech, id, pin, leftAngle, rightAngle
         {
          byte pin=pgm_read_byte_near(Layout+slot+2);

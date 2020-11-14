@@ -76,6 +76,7 @@ int TPL::locateRouteStart(short _route) {
   WiThrottle::annotateLeftRight=true;  // Prefer left/Right to Open/Closed
 
   TPLLayout::begin();// set pin modes for sensors, outputs, signals 
+  DIAG(F("\nTPL ready\n"));
 }
 
 
@@ -84,7 +85,7 @@ int TPL::locateRouteStart(short _route) {
 // - Reject/modify JMRI commands that would interfere with TPL processing 
 void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
     (void)stream; // avoid compiler warning if we don't access this parameter
-
+    DIAG(F("\nTPL INTERCEPT COMMAND '%c'\n"),opcode); 
     bool reject=false;
     switch(opcode) {
         
@@ -139,11 +140,11 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                  
             case HASH_KEYWORD_STATUS: // </STATUS>
                  if (paramCount!=1) return false;
-                 StringFormatter::send(stream, F("\nTPL STATUS\n"));
+                 StringFormatter::send(stream, F("\nTPL STATUS"));
                  {
                   TPL * task=loopTask;
                   while(task) {
-                      StringFormatter::send(stream,F("PC=%d,DT=%d,LOCO=%d%c,SPEED=%d%c\n"),
+                      StringFormatter::send(stream,F("\nPC=%d,DT=%d,LOCO=%d%c,SPEED=%d%c"),
                             task->progCounter,task->delayTime,task->loco,
                             task->invert?'I':' ',
                             task->speedo, 
@@ -156,7 +157,7 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                  for (int i=0;i<MAX_FLAGS; i++) {
                    byte flag=flags[i];
                    if (flag) {
-                     StringFormatter::send(stream,F("\nid=%d "),i);
+                     StringFormatter::send(stream,F("\nflag=%d "),i);
                      if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
                      if (flag & TURNOUT_FLAG_LEFT) StringFormatter::send(stream,F(" TL"));
                      if (flag & TURNOUT_FLAG_RIGHT) StringFormatter::send(stream,F(" TR"));
@@ -167,11 +168,9 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                           StringFormatter::send(stream,F(" RED"));
                      else if (flag & SIGNAL_FLAG_GREEN) 
                           StringFormatter::send(stream,F(" GREEN"));
-                          
-                   }
-                   StringFormatter::send(stream,F("\n"));
-                 
+                   }                 
                  }
+                 StringFormatter::send(stream,F("\n"));        
                  return true;
                  
             case HASH_KEYWORD_SCHEDULE: // </ SCHEDULE [cab] route >
@@ -191,7 +190,7 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
           
           // all other / commands take 1 parameter 0 to MAX_FLAGS-1     
 
-          if (paramCount!=1 || p[1]<0  || p[1]>=MAX_FLAGS) return false;
+          if (paramCount!=2 || p[1]<0  || p[1]>=MAX_FLAGS) return false;
 
           switch (p[0]) {     
             case HASH_KEYWORD_RESERVE:  // force reserve a section
@@ -277,7 +276,6 @@ void TPL::skipIfBlock() {
 }
 
 void TPL::loop() {
-     DCC::loop();
      //DIAG(F("\n+ pausing=%x, looptask=%x"),pausingTask,loopTask);
   
   // Round Robin call to a TPL task each time 
