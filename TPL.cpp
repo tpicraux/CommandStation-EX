@@ -75,8 +75,7 @@ int TPL::locateRouteStart(short _route) {
   DIAG(F("\nTPL begin\n"));
   DCCEXParser::setFilter(TPL::ComandFilter);
   new TPL(0); // add the startup route
-  WiThrottle::annotateLeftRight=true;  // Prefer left/Right to Open/Closed
-
+  
   TPLLayout::begin();// set pin modes for sensors, outputs, signals 
   DIAG(F("\nTPL ready\n"));
 }
@@ -86,8 +85,7 @@ int TPL::locateRouteStart(short _route) {
 // - Implement TPL specific commands/diagnostics 
 // - Reject/modify JMRI commands that would interfere with TPL processing 
 void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]) {
-    (void)stream; // avoid compiler warning if we don't access this parameter
-    DIAG(F("\nTPL INTERCEPT COMMAND '%c'\n"),opcode); 
+    (void)stream; // avoid compiler warning if we don't access this parameter 
     bool reject=false;
     switch(opcode) {
         
@@ -129,6 +127,7 @@ void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]
       }
      if (reject) {
       opcode=0;
+      if (Diag::TPL) DIAG(F("\nTPL rejects <%c>"),opcode); 
       StringFormatter::send(stream,F("<X>"));
      }
 }
@@ -166,12 +165,12 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                  for (int i=0;i<MAX_FLAGS; i++) {
                    byte flag=flags[i];
                    if (flag) {
-                     StringFormatter::send(stream,F("\nflag=%d "),i);
+                     StringFormatter::send(stream,F("\nflags[%d} "),i);
                      if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
                      if (flag & TURNOUT_FLAG_LEFT) StringFormatter::send(stream,F(" TL"));
                      if (flag & TURNOUT_FLAG_RIGHT) StringFormatter::send(stream,F(" TR"));
                      if (flag & SENSOR_FLAG) StringFormatter::send(stream,F(" SET"));
-                     if (flag & SIGNAL_FLAG_AMBER ==SIGNAL_FLAG_AMBER) 
+                     if ((flag & SIGNAL_FLAG_AMBER) ==SIGNAL_FLAG_AMBER) 
                           StringFormatter::send(stream,F(" AMBER"));
                      else if (flag & SIGNAL_FLAG_RED) 
                           StringFormatter::send(stream,F(" RED"));
@@ -234,7 +233,8 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
     }
 
 void TPL::setFlag(byte id,byte onMask, byte offMask) {
-   if (id>=MAX_FLAGS) return; // Outside UNO range limit
+  
+   if (FLAGOVERFLOW(id)) return; // Outside UNO range limit
    byte f=flags[id];
    f &= ~offMask;
    f |= onMask;
@@ -251,7 +251,7 @@ void TPL::driveLoco(byte speed) {
 }
 
 bool TPL::readSensor(short id) {
-  if (id>=MAX_FLAGS) return false;
+  if (FLAGOVERFLOW(id)) return false;
   if (flags[id] & SENSOR_FLAG) return true; // sensor locked on by software
   short s= TPLLayout::getSensor(id); // real hardware sensor (-1 if not exists )
   if (s==1 && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
@@ -338,7 +338,7 @@ void TPL::loop2() {
       break;
       
     case OPCODE_RESERVE:
-        if (operand>=MAX_FLAGS) break; // CAUTION reserve will not be done
+        if (FLAGOVERFLOW(operand)) break; // CAUTION reserve will not be done
         if (flags[operand] & SECTION_FLAG) {
         driveLoco(0);
         delayMe(500);

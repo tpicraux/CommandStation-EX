@@ -181,7 +181,16 @@ bool TPLLayout::setSignal(byte id, char rga){
   return true;
 }
 
-
+void TPLLayout::streamTurnoutList(Print * stream) {
+   for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
+      byte b=pgm_read_byte_near(Layout+slot);
+      if (!b) break;
+      if ((b & LAYOUT_TYPE_MASK)==LAYOUT_TYPE_TURNOUT) {
+        byte id=pgm_read_byte_near(Layout+slot+1);
+        StringFormatter::send(stream,F("]\\[%d}|{%d}|{2"), id, id);
+      }
+   }
+}
 
 int TPLLayout::getSlot(byte type,byte id) {
     for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {

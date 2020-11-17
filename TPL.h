@@ -53,8 +53,10 @@ enum OPCODE {OPCODE_TL,OPCODE_TR,
 
 #if (defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_SAMD_ZERO))
    static const short MAX_FLAGS=256;
+   #define FLAGOVERFLOW(x) false
 #else
   static const short MAX_FLAGS=64;
+  #define FLAGOVERFLOW(x) x>=MAX_FLAGS
 #endif
 
   static byte flags[MAX_FLAGS];
