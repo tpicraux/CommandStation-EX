@@ -21,9 +21,11 @@
   #include "myTPL.h"
   void DCC::beginTPL() {TPL::begin();}
   void DCC::loopTPL() {TPL::loop();}
+  LayoutManager * LayoutManager::manager=new TPLLayout();
 #else 
   void DCC::beginTPL(){};
   void DCC::loopTPL(){};
+  LayoutManager * LayoutManager::manager=new JMRILayout();
 #endif
 
 #endif

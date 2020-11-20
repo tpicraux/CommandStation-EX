@@ -22,10 +22,9 @@
 #include "PWMservoDriver.h"
 #include "DIAG.h"
 #include "DCC.h"
-
 Adafruit_MCP23017 * TPLLayout::mcp[4] = {NULL, NULL, NULL, NULL};
 
-void TPLLayout::begin() {
+void TPLLayout::begin()  {
   // presets and pins and eeprom
    for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
       byte tech=pgm_read_byte_near(Layout+slot);
@@ -199,15 +198,20 @@ bool TPLLayout::setSignal(byte id, char rga){
   return true;
 }
 
-void TPLLayout::streamTurnoutList(Print * stream) {
+bool TPLLayout::streamTurnoutList(Print * stream, bool withrottleStyle) {
+   bool foundSome=false;
    for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
       byte b=pgm_read_byte_near(Layout+slot);
       if (!b) break;
       if ((b & LAYOUT_TYPE_MASK)==LAYOUT_TYPE_TURNOUT) {
+        foundSome=true;
         byte id=pgm_read_byte_near(Layout+slot+1);
-        StringFormatter::send(stream,F("]\\[%d}|{%d}|{2"), id, id);
+        // TODO get turnout status from flags
+        if (withrottleStyle) StringFormatter::send(stream,F("]\\[%d}|{%d}|{2"), id, id);
+        else StringFormatter::send(stream,F("<H %d 0>"), id);
       }
    }
+   return foundSome;
 }
 
 int TPLLayout::getSlot(byte type,byte id) {
@@ -221,3 +225,7 @@ int TPLLayout::getSlot(byte type,byte id) {
     }
     return -1;
 }
+
+
+bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {return false;}
+bool TPLLayout::deleteTurnout(int id){return false;}

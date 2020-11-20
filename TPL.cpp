@@ -94,7 +94,7 @@ int TPL::locateRouteStart(short _route) {
   DCCEXParser::setFilter(TPL::ComandFilter);
   new TPL(0); // add the startup route
   
-  TPLLayout::begin();// set pin modes for sensors, outputs, signals 
+  LayoutManager::manager->begin();// set pin modes for sensors, outputs, signals 
   DIAG(F("\nTPL ready\n"));
 }
 
@@ -121,15 +121,6 @@ void TPL::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int p[]
            opcode=0;
         }
         break;
-
-     case 'T':      
-           if (paramCount!=2) { // Reject all Turnout define/delete commands
-               reject=true;
-               break;
-           }
-           TPLLayout::setTurnout(p[0],p[1]);
-           opcode=0;
-           break;
 
       case 't': // THROTTLE <t [REGISTER] CAB SPEED DIRECTION>          
           // TODO - Monitor throttle commands and reject any that are in current automation
@@ -228,12 +219,12 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                  return true;
                  
             case HASH_KEYWORD_TL:  // force Turnout LEFT
-                 TPLLayout::setTurnout(p[1], true);
+                 LayoutManager::manager->setTurnout(p[1], true);
                  setFlag(p[1], TURNOUT_FLAG_LEFT, TURNOUT_FLAG_RIGHT);
                 return true;
                  
             case HASH_KEYWORD_TR:  // Force Turnout RIGHT
-                 TPLLayout::setTurnout(p[1], false);
+                 LayoutManager::manager->setTurnout(p[1], false);
                  setFlag(p[1], TURNOUT_FLAG_RIGHT, TURNOUT_FLAG_LEFT);
                  return true;
                 
@@ -271,7 +262,7 @@ void TPL::driveLoco(byte speed) {
 bool TPL::readSensor(short id) {
   if (FLAGOVERFLOW(id)) return false;
   if (flags[id] & SENSOR_FLAG) return true; // sensor locked on by software
-  short s= TPLLayout::getSensor(id); // real hardware sensor (-1 if not exists )
+  short s= LayoutManager::manager->getSensor(id); // real hardware sensor (-1 if not exists )
   if (s==1 && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
   return s==1;
 }
@@ -327,12 +318,12 @@ void TPL::loop2() {
   switch (opcode) {
     
     case OPCODE_TL:
-         TPLLayout::setTurnout(operand, true);
+         LayoutManager::manager->setTurnout(operand, true);
          setFlag( operand, TURNOUT_FLAG_LEFT, TURNOUT_FLAG_RIGHT);
          break;
           
     case OPCODE_TR:
-         TPLLayout::setTurnout(operand, false);
+         LayoutManager::manager->setTurnout(operand, false);
          setFlag( operand, TURNOUT_FLAG_RIGHT, TURNOUT_FLAG_LEFT);
          break; 
     
@@ -426,17 +417,17 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
-      TPLLayout::setSignal(operand,'R');
+      LayoutManager::manager->setSignal(operand,'R');
       setFlag(operand,SIGNAL_FLAG_RED,SIGNAL_FLAG_GREEN);
       break;
     
     case OPCODE_AMBER:
-      TPLLayout::setSignal(operand,'A');
+      LayoutManager::manager->setSignal(operand,'A');
       setFlag(operand,SIGNAL_FLAG_AMBER,0);
       break;
     
     case OPCODE_GREEN:
-      TPLLayout::setSignal(operand,'G');
+      LayoutManager::manager->setSignal(operand,'G');
       setFlag(operand,SIGNAL_FLAG_GREEN,SIGNAL_FLAG_RED);      
       break;
        

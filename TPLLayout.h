@@ -18,7 +18,7 @@
  */
  #ifndef TPLLayout_H
  #define TPLLayout_H
- 
+#include "LayoutManager.h" 
 #include <Adafruit_MCP23017.h>
 
 
@@ -47,14 +47,17 @@ const byte LAYOUT_PIN_SIGNAL=LAYOUT_TYPE_SIGNAL | 0x02;
 const byte LAYOUT_SLOT_WIDTH=7;
  
 
-class TPLLayout {
+class TPLLayout : public LayoutManager {
   public:
-     static void begin();
-     static bool setTurnout(byte id, bool left);
-     static int getSensor(byte id);
-     static bool setOutput(byte id, bool on);
-     static bool setSignal(byte id, char RGA);
-     static void streamTurnoutList(Print * stream);
+       void begin();
+       bool setTurnout(byte id, bool left);
+       int getSensor(byte id);
+       bool setOutput(byte id, bool on);
+       bool setSignal(byte id, char RGA);
+       bool streamTurnoutList(Print * stream, bool withrottleStyle); // or JMRI style if false
+       bool defineTurnout(int id, int addr, byte subaddr);
+       bool deleteTurnout(int id);
+
      static const  PROGMEM  byte Layout[]; 
   private:
      static int getSlot(byte type, byte id);

@@ -21,7 +21,9 @@
 #include "DCCEXParser.h"
 #include "DCC.h"
 #include "DCCWaveform.h"
-#include "Turnouts.h"
+
+#include "LayoutManager.h"
+
 #include "Outputs.h"
 #include "Sensors.h"
 #include "freeMemory.h"
@@ -595,35 +597,18 @@ bool DCCEXParser::parseT(Print *stream, int params, int p[])
     switch (params)
     {
     case 0: // <T>  show all turnouts
-    {
-        bool gotOne = false;
-        for (Turnout *tt = Turnout::firstTurnout; tt != NULL; tt = tt->nextTurnout)
-        {
-            gotOne = true;
-            StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, (tt->data.tStatus & STATUS_ACTIVE)!=0);
-        }
-        return gotOne; // will <X> if none found
-    }
-
+          return LayoutManager::manager->streamTurnoutList(stream,false); // will <X> if none found
+    
     case 1: // <T id>  delete turnout
-        if (!Turnout::remove(p[0]))
-            return false;
-        StringFormatter::send(stream, F("<O>"));
-        return true;
+        return LayoutManager::manager->deleteTurnout(p[0]); // will <X> if none found
 
     case 2: // <T id 0|1>  activate turnout
-    {
-        Turnout *tt = Turnout::get(p[0]);
-        if (!tt)
-            return false;
-        tt->activate(p[1]);
-        StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, (tt->data.tStatus & STATUS_ACTIVE)!=0);
-    }
+        if (!LayoutManager::manager->setTurnout(p[0],p[1])) return false;
+        StringFormatter::send(stream, F("<H %d %d>"), p[0], p[1]!=0);
         return true;
 
     case 3: // <T id addr subaddr>  define turnout
-        if (!Turnout::create(p[0], p[1], p[2]))
-            return false;
+        if (!LayoutManager::manager->defineTurnout(p[0],p[1],p[2])) return false;
         StringFormatter::send(stream, F("<O>"));
         return true;
 
