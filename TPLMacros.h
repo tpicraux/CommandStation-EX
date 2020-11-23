@@ -42,6 +42,7 @@
 #define AMBER(signal_id) OPCODE_AMBER,signal_id,
 #define AT(sensor_id) OPCODE_AT,sensor_id,
 #define DELAY(mindelay) OPCODE_DELAY,mindelay,
+#define DELAYMINS(mindelay) OPCODE_DELAYMINS,mindelay,
 #define DELAYRANDOM(mindelay,maxdelay) OPCODE_DELAY,mindelay,OPCODE_RANDWAIT,maxdelay-mindelay,
 #define ENDIF  OPCODE_ENDIF,0,
 #define FOFF(func) OPCODE_FOFF,func,

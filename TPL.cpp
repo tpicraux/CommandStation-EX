@@ -409,7 +409,11 @@ void TPL::loop2() {
       break;
     
     case OPCODE_DELAY:
-      delayMe(operand*10);
+      delayMe(operand*100);
+      break;
+   
+    case OPCODE_DELAYMINS:
+      delayMe(operand*60*1000);
       break;
     
     case OPCODE_RANDWAIT:
