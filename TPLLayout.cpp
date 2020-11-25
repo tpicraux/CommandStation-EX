@@ -227,5 +227,12 @@ int TPLLayout::getSlot(byte type,byte id) {
 }
 
 
-bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {return false;}
-bool TPLLayout::deleteTurnout(int id){return false;}
+bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {
+  (void) id; (void) addr; (void) subaddr;
+  return false;
+}
+  
+bool TPLLayout::deleteTurnout(int id) {
+  (void)id;
+  return false;
+}

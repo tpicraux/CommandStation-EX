@@ -93,8 +93,6 @@ int TPL::locateRouteStart(short _route) {
   DIAG(F("\nTPL begin\n"));
   DCCEXParser::setFilter(TPL::ComandFilter);
   new TPL(0); // add the startup route
-  
-  LayoutManager::manager->begin();// set pin modes for sensors, outputs, signals 
   DIAG(F("\nTPL ready\n"));
 }
 
