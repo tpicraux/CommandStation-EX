@@ -24,6 +24,8 @@
 #include "DCC.h"
 Adafruit_MCP23017 * TPLLayout::mcp[4] = {NULL, NULL, NULL, NULL};
 
+byte TPLLayout::flags[MAX_FLAGS];
+
 void TPLLayout::begin()  {
   // presets and pins and eeprom
    for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
@@ -134,13 +136,14 @@ bool TPLLayout::setTurnout(byte id, bool left) {
     default:
       break;              
    }
+   setFlag(id,left?TURNOUT_FLAG_LEFT:TURNOUT_FLAG_RIGHT, TURNOUT_FLAG_LEFT|TURNOUT_FLAG_RIGHT);
    return true;
 }
 
 int TPLLayout::getSensor(byte id) {
   int slot=getSlot(LAYOUT_TYPE_SENSOR,id);
   if (slot<0) return -1; // missing sensors are just virtual
-          
+  if (flags[id] & SENSOR_FLAG) return 1;        
    byte tech=pgm_read_byte_near(Layout+slot+1);
    byte pin=pgm_read_byte_near(Layout+slot+2);
    bool invert=pgm_read_byte_near(Layout+slot+3);
@@ -195,6 +198,18 @@ bool TPLLayout::setSignal(byte id, char rga){
            digitalWrite2(pin[2],rga=='A'?LOW:HIGH);          
            break;
    } 
+   switch (rga) {
+     case 'R': 
+         setFlag(id,SIGNAL_FLAG_RED,SIGNAL_FLAG_GREEN);
+         break;
+     case 'G': 
+         setFlag(id,SIGNAL_FLAG_GREEN,SIGNAL_FLAG_RED);
+         break;
+     case 'A': 
+         setFlag(id,SIGNAL_FLAG_AMBER);
+         break;
+   }
+      
   return true;
 }
 
@@ -226,6 +241,22 @@ int TPLLayout::getSlot(byte type,byte id) {
     return -1;
 }
 
+void TPLLayout::setFlag(byte id,byte onMask, byte offMask) {
+  
+   if (FLAGOVERFLOW(id)) return; // Outside UNO range limit
+   byte f=flags[id];
+   f &= ~offMask;
+   f |= onMask;
+   if (f!=flags[id]) {
+       flags[id]=f;
+       // TODO EEPROM STORE FLAG STATE
+   }
+}
+byte TPLLayout::getFlag(byte id,byte mask) {
+   if (FLAGOVERFLOW(id)) return 0; // Outside UNO range limit
+   return flags[id]&mask;   
+}
+
 
 bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {
   (void) id; (void) addr; (void) subaddr;
@@ -235,4 +266,24 @@ bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {
 bool TPLLayout::deleteTurnout(int id) {
   (void)id;
   return false;
+}
+
+ void TPLLayout::streamFlags(Print* stream) {                
+     for (int id=0;id<MAX_FLAGS; id++) {
+     byte flag=flags[id];
+     if (flag) {
+       StringFormatter::send(stream,F("\nflags[%d} "),id);
+       if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
+       if (flag & TURNOUT_FLAG_LEFT) StringFormatter::send(stream,F(" TL"));
+       if (flag & TURNOUT_FLAG_RIGHT) StringFormatter::send(stream,F(" TR"));
+       if (flag & SENSOR_FLAG) StringFormatter::send(stream,F(" SET"));
+       if ((flag & SIGNAL_FLAG_AMBER) ==SIGNAL_FLAG_AMBER) 
+            StringFormatter::send(stream,F(" AMBER"));
+       else if (flag & SIGNAL_FLAG_RED) 
+            StringFormatter::send(stream,F(" RED"));
+       else if (flag & SIGNAL_FLAG_GREEN) 
+            StringFormatter::send(stream,F(" GREEN"));
+     }                 
+   }
+   StringFormatter::send(stream,F("\n"));
 }
