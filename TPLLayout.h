@@ -22,7 +22,7 @@
 #include <Adafruit_MCP23017.h>
 
 
-// Type masks for searching by type withoyr regard to technology 
+// Type masks for searching by type without regard to technology 
 const byte         LAYOUT_TYPE_MASK=0xF0;   // allows search on turnout/sensor/output/signal
 const byte         LAYOUT_TYPE_TURNOUT=0x10;   // allows search on turnout/sensor/output/signal
 const byte         LAYOUT_TYPE_SENSOR=0x20;   // allows search on turnout/sensor/output/signal
@@ -46,11 +46,11 @@ const byte LAYOUT_PIN_SIGNAL=LAYOUT_TYPE_SIGNAL | 0x02;
 
 const byte LAYOUT_SLOT_WIDTH=7;
  
-
+  // Flag bits for status of hardware and TPL
   static const short SECTION_FLAG = 0x01;
   static const short SENSOR_FLAG = 0x02;
   static const short SIGNAL_FLAG_RED = 0x04;
-  static const short SIGNAL_FLAG_GREEN = 0x08; // AMBER = red + green
+  static const short SIGNAL_FLAG_GREEN = 0x08; 
   static const short SIGNAL_FLAG_AMBER = SIGNAL_FLAG_RED | SIGNAL_FLAG_GREEN;
   static const short TURNOUT_FLAG_LEFT = 0x10;
   static const short TURNOUT_FLAG_RIGHT = 0x20;
@@ -78,7 +78,7 @@ class TPLLayout : public LayoutManager {
      // Part 2 functions associated with TPL 
        static void streamFlags(Print* stream);
        static void setFlag(byte id,byte onMask, byte OffMask=0);
-       static byte getFlag(byte id,byte mask=0xff);    
+       static byte getFlag(byte id,byte mask);    
 
        static const  PROGMEM  byte Layout[]; 
   private:

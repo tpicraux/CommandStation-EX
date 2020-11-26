@@ -230,7 +230,6 @@ void TPL::driveLoco(byte speed) {
 }
 
 bool TPL::readSensor(short id) {
-  if (FLAGOVERFLOW(id)) return false;
   short s= LayoutManager::manager->getSensor(id); // real hardware sensor (-1 if not exists )
   if (s==1 && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
   return s==1;
@@ -314,7 +313,7 @@ void TPL::loop2() {
       break;
       
     case OPCODE_RESERVE:
-        if (TPLLayout::getFlag(operand) & SECTION_FLAG) {
+        if (TPLLayout::getFlag(operand,SECTION_FLAG)) {
         driveLoco(0);
         delayMe(500);
         return;
