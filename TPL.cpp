@@ -18,7 +18,7 @@
  */
 #include <Arduino.h>
 #include "TPL.h"
-#include "TPLLayout.h"
+#include "Layout.h"
 #include "DCC.h"
 #include "DIAG.h"
 #include "WiThrottle.h"
@@ -169,7 +169,7 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
                       if (task==loopTask) break;      
                     }                            
                  }
-                 TPLLayout::streamFlags(stream);
+                 Layout::streamFlags(stream);
         
                  return true;
                  
@@ -194,27 +194,27 @@ bool TPL::parseSlash(Print * stream, byte & paramCount, int p[]) {
 
           switch (p[0]) {     
             case HASH_KEYWORD_RESERVE:  // force reserve a section
-                 TPLLayout::setFlag(p[1],SECTION_FLAG);
+                 Layout::setFlag(p[1],SECTION_FLAG);
                  return true;
     
             case HASH_KEYWORD_FREE:  // force free a section
-                 TPLLayout::setFlag(p[1],0,SECTION_FLAG);
+                 Layout::setFlag(p[1],0,SECTION_FLAG);
                  return true;
                  
             case HASH_KEYWORD_TL:  // force Turnout LEFT
-                 LayoutManager::manager->setTurnout(p[1], true);
+                 Layout::setTurnout(p[1], true);
                  return true;
                  
             case HASH_KEYWORD_TR:  // Force Turnout RIGHT
-                 LayoutManager::manager->setTurnout(p[1], false);
+                 Layout::setTurnout(p[1], false);
                  return true;
                 
             case HASH_KEYWORD_SET:
-                 TPLLayout::setFlag(p[1], SENSOR_FLAG);
+                 Layout::setFlag(p[1], SENSOR_FLAG);
                  return true;
    
             case HASH_KEYWORD_RESET:
-                 TPLLayout::setFlag(p[1], 0, SENSOR_FLAG);
+                 Layout::setFlag(p[1], 0, SENSOR_FLAG);
                  return true;
                   
             default:
@@ -230,7 +230,7 @@ void TPL::driveLoco(byte speed) {
 }
 
 bool TPL::readSensor(short id) {
-  short s= LayoutManager::manager->getSensor(id); // real hardware sensor (-1 if not exists )
+  short s= Layout::getSensor(id); // real hardware sensor (-1 if not exists )
   if (s==1 && Diag::TPL) DIAG(F("\nTPL Sensor %d hit\n"),id);
   return s==1;
 }
@@ -286,11 +286,11 @@ void TPL::loop2() {
   switch (opcode) {
     
     case OPCODE_TL:
-         LayoutManager::manager->setTurnout(operand, true);
+         Layout::setTurnout(operand, true);
          break;
           
     case OPCODE_TR:
-         LayoutManager::manager->setTurnout(operand, false);
+         Layout::setTurnout(operand, false);
          break; 
     
     case OPCODE_REV:
@@ -313,16 +313,16 @@ void TPL::loop2() {
       break;
       
     case OPCODE_RESERVE:
-        if (TPLLayout::getFlag(operand,SECTION_FLAG)) {
+        if (Layout::getFlag(operand,SECTION_FLAG)) {
         driveLoco(0);
         delayMe(500);
         return;
       }
-      TPLLayout::setFlag(operand,SECTION_FLAG);
+      Layout::setFlag(operand,SECTION_FLAG);
       break;
     
     case OPCODE_FREE:
-      TPLLayout::setFlag(operand,0,SECTION_FLAG);
+      Layout::setFlag(operand,0,SECTION_FLAG);
       break;
     
     case OPCODE_AT:
@@ -340,11 +340,11 @@ void TPL::loop2() {
       break;
     
     case OPCODE_SET:
-      TPLLayout::setFlag(operand,SENSOR_FLAG);
+      Layout::setFlag(operand,SENSOR_FLAG);
       break;
     
     case OPCODE_RESET:
-      TPLLayout::setFlag(operand,0,SENSOR_FLAG);
+      Layout::setFlag(operand,0,SENSOR_FLAG);
       break;
 
     case OPCODE_PAUSE:
@@ -386,15 +386,15 @@ void TPL::loop2() {
       break;
     
     case OPCODE_RED:
-      LayoutManager::manager->setSignal(operand,'R');
+      Layout::setSignal(operand,'R');
       break;
     
     case OPCODE_AMBER:
-      LayoutManager::manager->setSignal(operand,'A');
+      Layout::setSignal(operand,'A');
       break;
     
     case OPCODE_GREEN:
-      LayoutManager::manager->setSignal(operand,'G');
+      Layout::setSignal(operand,'G');
       break;
        
     case OPCODE_FON:      

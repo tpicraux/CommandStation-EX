@@ -45,7 +45,7 @@
 #include "DCCWaveform.h"
 #include "StringFormatter.h"
 #include "Turnouts.h"
-#include "LayoutManager.h"
+#include "Layout.h"
 #include "DIAG.h"
 #include "GITHUB_SHA.h"
 #include "version.h"
@@ -171,7 +171,7 @@ void WiThrottle::parse(RingStream * stream, byte * cmdx) {
               StringFormatter::send(stream,F("HtDCC-EX v%S, %S, %S, %S\n"), F(VERSION), F(ARDUINO_TYPE), DCC::getMotorShieldName(), F(GITHUB_SHA));
               if (annotateLeftRight) StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Left}|{2]\\[Right}|{4\n"));
               else                   StringFormatter::send(stream,F("PTT]\\[Turnouts}|{Turnout]\\[Closed}|{2]\\[Thrown}|{4\n"));
-              LayoutManager::manager->streamTurnoutList(stream,true);
+              Layout::streamTurnoutList(stream,true);
               
               StringFormatter::send(stream,F("PPA%x\n"),DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON);
               lastPowerState = (DCCWaveform::mainTrack.getPowerMode()==POWERMODE::ON); //remember power state sent for comparison later

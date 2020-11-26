@@ -38,27 +38,24 @@
 // 1- JMRI standard layout control (alllows JMRI to create turnouts/sensors etc)
 // 2- TPL standard layout control (myLayout.h defines turnouts/sensors etc)
 // 3- TPL standard layout control with automation (myLayout.h and myTPL.h contains automation)
-#include "LayoutManager.h"
+#include "Layout.h"
 
 #if __has_include ( "myLayout.h")
   #include "TPL.h"
   #include "TPLMacros.h"
-  #include "TPLLayout.h"
   #include "myLayout.h"
-  LayoutManager * LayoutManager::manager=new TPLLayout();
   #if __has_include ( "myTPL.h")
     #include "myTPL.h"
-    void DCC::beginTPL() {LayoutManager::manager->begin(); TPL::begin();}
+    void DCC::beginTPL() {TPL::begin();}
     void DCC::loopTPL() {TPL::loop();}
   #else
-    void DCC::beginTPL() {LayoutManager::manager->begin();}
+    void DCC::beginTPL() {}
     void DCC::loopTPL() {}  
   #endif      
 #else 
-  #include "JMRILayout.h"
-  LayoutManager * LayoutManager::manager=new JMRILayout();
-  void DCC::beginTPL(){LayoutManager::manager->begin();};
+  void DCC::beginTPL(){};
   void DCC::loopTPL(){};
+  const  PROGMEM  byte Layout::PredefinedLayout[] = {0xFF);  // No predefined layout marker
 #endif
 
 #endif

@@ -19,7 +19,7 @@
 #ifndef TPLMacros_H
 #define TPLMacros_H
 
-#define LAYOUT const  PROGMEM  byte TPLLayout::Layout[] = {
+#define LAYOUT const  PROGMEM  byte Layout::PredefinedLayout[] = {
 #define SERVO_TURNOUT(id,pin,left,right)         LAYOUT_SERVO_TURNOUT,id,pin,left&0xFF,left>>8,right&0xFF,right>>8,
 #define DCC_TURNOUT(id,addr,subaddr,leftActive)  LAYOUT_DCC_TURNOUT,id,,addr&0xFF,addr>>8,subaddr,leftActive,0
 #define PIN_TURNOUT(id,pin,leftActive)           LAYOUT_PIN_TURNOUT,id,pin,leftActive,0,0,0

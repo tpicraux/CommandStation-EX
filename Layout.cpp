@@ -17,21 +17,30 @@
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <Arduino.h>
-#include "TPLLayout.h"
+#include "Layout.h"
 #include <DIO2.h>
 #include "PWMservoDriver.h"
 #include "DIAG.h"
 #include "DCC.h"
-Adafruit_MCP23017 * TPLLayout::mcp[4] = {NULL, NULL, NULL, NULL};
+#include "EEPROM.h"
+Adafruit_MCP23017 * Layout::mcp[4] = {NULL, NULL, NULL, NULL};
 
-byte TPLLayout::flags[MAX_FLAGS];
+#define SLOTWORD(x)  ( slot[x]+(slot[x+1]<<8))     
 
-void TPLLayout::begin()  {
+byte Layout::flags[MAX_FLAGS];
+byte Layout::slot[LAYOUT_SLOT_WIDTH];
+bool Layout::predefinedLayout=false;
+
+void Layout::begin()  {
+  predefinedLayout=pgm_read_byte_near(PredefinedLayout)!=0xFF;
+  // TODO check EEPROM stamp 
+  EEPROM.get(EEPROM_FLAGS_START,flags);
   // presets and pins and eeprom
-   for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
-      byte tech=pgm_read_byte_near(Layout+slot);
+   for (int slotno=0;;slotno++) {
+      getSlot(slotno);
+      if (!slot[0]) break;
+      byte tech=slot[0];
       DIAG(F("\nLayout %x"),tech);
-      if (!tech) break;
       switch (tech) {
         case LAYOUT_SERVO_TURNOUT:
         case  LAYOUT_DCC_TURNOUT:
@@ -39,39 +48,38 @@ void TPLLayout::begin()  {
         
         case LAYOUT_PIN_TURNOUT:
         case LAYOUT_PIN_OUTPUT:
-             pinsetup(slot+2,OUTPUT);
+             pinMode(slot[2],OUTPUT);
              break; 
  
         case LAYOUT_I2CPIN_TURNOUT:
         case LAYOUT_I2C_OUTPUT:
-             i2cpinsetup(slot+2,OUTPUT);
+             i2cpinsetup(slot[2],OUTPUT);
              break;
 
         case LAYOUT_I2C_SENSOR:
-             i2cpinsetup(slot+2,INPUT);
+             i2cpinsetup(slot[2],INPUT);
              break;
 
        case  LAYOUT_PIN_SENSOR:
-             pinsetup(slot+2,INPUT);
+             pinMode(slot[2],INPUT_PULLUP);
              break;
 
        case LAYOUT_I2C_SIGNAL:
-             i2cpinsetup(slot+2,OUTPUT);
-             i2cpinsetup(slot+3,OUTPUT);
-             i2cpinsetup(slot+4,OUTPUT);
+             i2cpinsetup(slot[2],OUTPUT);
+             i2cpinsetup(slot[3],OUTPUT);
+             i2cpinsetup(slot[4],OUTPUT);
              break; 
              
        case LAYOUT_PIN_SIGNAL:
-             pinsetup(slot+2,OUTPUT);
-             pinsetup(slot+3,OUTPUT);
-             pinsetup(slot+4,OUTPUT);
+             pinMode(slot[2],OUTPUT);
+             pinMode(slot[3],OUTPUT);
+             pinMode(slot[4],OUTPUT);
              break; 
       }
    }
 }
 
-void TPLLayout::i2cpinsetup(int pinpos, byte direction) {
-  byte pin=pgm_read_byte_near(Layout+pinpos);
+void Layout::i2cpinsetup(byte pin, byte direction) {
   byte board = pin / 16;
   byte subPin = pin % 16;
   if (!mcp[board]) {
@@ -84,41 +92,36 @@ void TPLLayout::i2cpinsetup(int pinpos, byte direction) {
   }
   else  mcp[board]->pinMode(subPin, OUTPUT);                                 
 }
-
-void TPLLayout::pinsetup(int pinpos, byte direction) {
-  byte pin=pgm_read_byte_near(Layout+pinpos);
-  pinMode(pin,direction);
-}
    
-bool TPLLayout::setTurnout(byte id, bool left) {
-  int slot=getSlot(LAYOUT_TYPE_TURNOUT,id);
-  if (slot<0) {
-          DIAG(F("\nTPL missing turnout %d\n"),id);
-          return false;
-          }
+bool Layout::setTurnout(byte id, bool left) {
+  if (getSlot(LAYOUT_TYPE_TURNOUT,id)<0) {  
+        DIAG(F("\nLayout missing turnout %d\n"),id);
+        return false;
+     }
           
-   switch (pgm_read_byte_near(Layout+slot)) {
+   switch (slot[0]) {
     case LAYOUT_SERVO_TURNOUT:  //tech, id, pin, leftAngle, rightAngle
         {
-         byte pin=pgm_read_byte_near(Layout+slot+2);
-         uint16_t angle=pgm_read_word_near(Layout+slot+ (left?3:5));
+         byte pin=slot[2];
+         uint16_t angle;
+         if (left) angle=SLOTWORD(3);
+            else   angle=SLOTWORD(5);
          PWMServoDriver::setServo(pin,angle);
         }
         break;
-    
     case LAYOUT_DCC_TURNOUT:  // tech, id, addr, subaddr,leftisActive
         {
-          int addr=pgm_read_word_near(Layout+slot+2);
-          byte subaddr=pgm_read_byte_near(Layout+slot+4);
-          byte leftIsActive=pgm_read_byte_near(Layout+slot+5);
+          int addr=SLOTWORD(2);
+          byte subaddr=slot[4];
+          byte leftIsActive=slot[5];
           DCC::setAccessory(addr,subaddr, leftIsActive?left:!left);
         }
         break;
          
     case LAYOUT_I2CPIN_TURNOUT:  // tech, id, pin, leftValue
         {
-          byte pin=pgm_read_byte_near(Layout+slot+2);
-          byte leftValue=pgm_read_byte_near(Layout+slot+3);
+          byte pin=slot[2];
+          byte leftValue=slot[3];
           if (!left) leftValue=~leftValue; 
           mcp[pin / 16]->digitalWrite(pin % 16,leftValue);          
         }
@@ -126,8 +129,8 @@ bool TPLLayout::setTurnout(byte id, bool left) {
         
     case LAYOUT_PIN_OUTPUT:  // tech, id, pin, leftValue
         {
-          byte pin=pgm_read_byte_near(Layout+slot+2);
-          byte leftValue=pgm_read_byte_near(Layout+slot+3);
+          byte pin=slot[2];
+          byte leftValue=slot[3];
           if (!left) leftValue=~leftValue; 
           digitalWrite2(pin,leftValue);
         }
@@ -140,13 +143,12 @@ bool TPLLayout::setTurnout(byte id, bool left) {
    return true;
 }
 
-int TPLLayout::getSensor(byte id) {
-  int slot=getSlot(LAYOUT_TYPE_SENSOR,id);
-  if (slot<0) return -1; // missing sensors are just virtual
-  if (flags[id] & SENSOR_FLAG) return 1;        
-   byte tech=pgm_read_byte_near(Layout+slot+1);
-   byte pin=pgm_read_byte_near(Layout+slot+2);
-   bool invert=pgm_read_byte_near(Layout+slot+3);
+int Layout::getSensor(byte id) {
+  if (flags[id] & SENSOR_FLAG) return 1;  // sensor set on in code         
+  if (getSlot(LAYOUT_TYPE_SENSOR,id)<0) return -1; // missing sensors are just virtual
+   byte tech=slot[1];
+   byte pin=slot[2];
+   bool invert=slot[3];
    switch (tech) {
      case LAYOUT_I2C_SENSOR:
           return  mcp[pin / 16]->digitalRead(pin % 16) ^ invert;
@@ -157,13 +159,12 @@ int TPLLayout::getSensor(byte id) {
    }              
 }
 
-bool TPLLayout::setOutput(byte id, bool on) {
-    int slot=getSlot(LAYOUT_TYPE_OUTPUT,id);
-    if (slot<0) return false; // missing outputs are just virtual
+bool Layout::setOutput(byte id, bool on) {
+    if (getSlot(LAYOUT_TYPE_OUTPUT,id)<0) return false; // missing outputs are just virtual
           
-   byte tech=pgm_read_byte_near(Layout+slot+1);
-   byte pin=pgm_read_byte_near(Layout+slot+2);
-   bool invert=pgm_read_byte_near(Layout+slot+3);
+   byte tech=slot[1];
+   byte pin=slot[2];
+   bool invert=slot[3];
    switch (tech) {
      case LAYOUT_I2C_OUTPUT:
           mcp[pin / 16]->digitalWrite(pin % 16,on ^ invert);
@@ -178,14 +179,13 @@ bool TPLLayout::setOutput(byte id, bool on) {
 }
 
 
-bool TPLLayout::setSignal(byte id, char rga){
-  int slot=getSlot(LAYOUT_TYPE_OUTPUT,id);
-  if (slot<0) return false; // missing outputs are just virtual
-   byte tech=pgm_read_byte_near(Layout+slot+1);
+bool Layout::setSignal(byte id, char rga){
+  if (getSlot(LAYOUT_TYPE_OUTPUT,id)<0) return false; // missing outputs are just virtual
+   byte tech=slot[1];
    byte pin[3];
-   pin[0]=pgm_read_byte_near(Layout+slot+2);
-   pin[1]=pgm_read_byte_near(Layout+slot+3);
-   pin[2]=pgm_read_byte_near(Layout+slot+4);
+   pin[0]=slot[2];
+   pin[1]=slot[3];
+   pin[2]=slot[4];
    switch (tech) {
       case LAYOUT_I2C_SIGNAL:
            mcp[pin[0] / 16]->digitalWrite(pin[0] % 16,rga=='R'?LOW:HIGH);          
@@ -213,14 +213,14 @@ bool TPLLayout::setSignal(byte id, char rga){
   return true;
 }
 
-bool TPLLayout::streamTurnoutList(Print * stream, bool withrottleStyle) {
+bool Layout::streamTurnoutList(Print * stream, bool withrottleStyle) {
    bool foundSome=false;
-   for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
-      byte b=pgm_read_byte_near(Layout+slot);
-      if (!b) break;
-      if ((b & LAYOUT_TYPE_MASK)==LAYOUT_TYPE_TURNOUT) {
+   for (int slotno=0;;slotno++) {
+      getSlot(slotno);
+      if (!slot[0]) break;
+      if ((slot[0] & LAYOUT_TYPE_MASK)==LAYOUT_TYPE_TURNOUT) {
         foundSome=true;
-        byte id=pgm_read_byte_near(Layout+slot+1);
+        byte id=slot[1];
         // TODO get turnout status from flags
         if (withrottleStyle) StringFormatter::send(stream,F("]\\[%d}|{%d}|{2"), id, id);
         else StringFormatter::send(stream,F("<H %d 0>"), id);
@@ -229,46 +229,60 @@ bool TPLLayout::streamTurnoutList(Print * stream, bool withrottleStyle) {
    return foundSome;
 }
 
-int TPLLayout::getSlot(byte type,byte id) {
-    for (int slot=0;;slot+=LAYOUT_SLOT_WIDTH) {
-      byte b=pgm_read_byte_near(Layout+slot);
-      if (!b) break;
-      if ((b & LAYOUT_TYPE_MASK)==type) {
-        b=pgm_read_byte_near(Layout+slot+1);
-        if (b==id) return slot;
-      }
+
+void Layout::getSlot(int slotno) {
+    if (predefinedLayout) {
+        for (int i=0;i<LAYOUT_SLOT_WIDTH;i++) slot[i]=pgm_read_byte_near(PredefinedLayout+(LAYOUT_SLOT_WIDTH*slotno)+i);
     }
-    return -1;
+    else {
+        for (int i=0;i<LAYOUT_SLOT_WIDTH;i++) slot[i]=EEPROM.read(EEPROM_LAYOUT_START+(LAYOUT_SLOT_WIDTH*slotno)+i);    
+    }
 }
 
-void TPLLayout::setFlag(byte id,byte onMask, byte offMask) {
+int Layout::getSlot(byte type,byte id) {
+     for (int slotno=0;;slotno++) {
+        getSlot(slotno);
+        if (!slot[0]) return -1;  // end of slot table 
+        if (slot[1]==id && ((slot[0] & LAYOUT_TYPE_MASK)==type)) return slotno;           
+     }
+}
+
+void Layout::setFlag(byte id,byte onMask, byte offMask) {
   
    if (FLAGOVERFLOW(id)) return; // Outside UNO range limit
    byte f=flags[id];
+   byte previous=f;
    f &= ~offMask;
    f |= onMask;
    if (f!=flags[id]) {
        flags[id]=f;
-       // TODO EEPROM STORE FLAG STATE
+       if (f!=previous) EEPROM.write(EEPROM_FLAGS_START+id, f);
    }
 }
-byte TPLLayout::getFlag(byte id,byte mask) {
+byte Layout::getFlag(byte id,byte mask) {
    if (FLAGOVERFLOW(id)) return 0; // Outside UNO range limit
    return flags[id]&mask;   
 }
 
 
-bool TPLLayout::defineTurnout(int id, int addr, byte subaddr) {
-  (void) id; (void) addr; (void) subaddr;
+bool Layout::defineTurnout(int id, int addr, byte subaddr) {
+  if (predefinedLayout || (getSlot(LAYOUT_TYPE_TURNOUT,id)>=0)) return false; 
+  
+  // TODO... create slot on EEPROM ... find an empty slot 
   return false;
 }
   
-bool TPLLayout::deleteTurnout(int id) {
-  (void)id;
-  return false;
+bool Layout::deleteTurnout(int id) {
+  if (predefinedLayout) return false;
+  int sno= getSlot(LAYOUT_TYPE_TURNOUT,id);
+  if (sno>=0) {
+    EEPROM.write(EEPROM_LAYOUT_START+sno*LAYOUT_SLOT_WIDTH, 0xff); // mark unused  (0=end of list!)
+    EEPROM.write(EEPROM_LAYOUT_START+sno*LAYOUT_SLOT_WIDTH+1, 0x00); // id 0 
+  } 
+  return true;
 }
 
- void TPLLayout::streamFlags(Print* stream) {                
+ void Layout::streamFlags(Print* stream) {                
      for (int id=0;id<MAX_FLAGS; id++) {
      byte flag=flags[id];
      if (flag) {

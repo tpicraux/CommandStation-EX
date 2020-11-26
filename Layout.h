@@ -16,9 +16,9 @@
  *  You should have received a copy of the GNU General Public License
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
- #ifndef TPLLayout_H
- #define TPLLayout_H
-#include "LayoutManager.h" 
+ #ifndef Layout_H
+ #define Layout_H
+#include "Layout.h" 
 #include <Adafruit_MCP23017.h>
 
 
@@ -63,30 +63,37 @@ const byte LAYOUT_SLOT_WIDTH=7;
   #define FLAGOVERFLOW(x) x>=MAX_FLAGS
 #endif
 
-class TPLLayout : public LayoutManager {
+class Layout  {
   public:
-      // Part1: functions implementing LayoutManager
-       void begin();
-       bool setTurnout(byte id, bool left);
-       int getSensor(byte id);
-       bool setOutput(byte id, bool on);
-       bool setSignal(byte id, char RGA);
-       bool defineTurnout(int id, int addr, byte subaddr);
-       bool deleteTurnout(int id);
-       bool streamTurnoutList(Print * stream, bool withrottleStyle); // or JMRI style if false
+       static void begin();
+       static bool setTurnout(byte id, bool left);
+       static int getSensor(byte id);
+       static bool setOutput(byte id, bool on);
+       static bool setSignal(byte id, char RGA);
+       static bool defineTurnout(int id, int addr, byte subaddr);
+       static bool deleteTurnout(int id);
+       static bool streamTurnoutList(Print * stream, bool withrottleStyle); // or JMRI style if false
        
      // Part 2 functions associated with TPL 
        static void streamFlags(Print* stream);
        static void setFlag(byte id,byte onMask, byte OffMask=0);
        static byte getFlag(byte id,byte mask);    
 
-       static const  PROGMEM  byte Layout[]; 
+       static const  PROGMEM  byte PredefinedLayout[];
+       static const int EEPROM_FLAGS_START=32; 
+       static const int EEPROM_LAYOUT_START=EEPROM_FLAGS_START+MAX_FLAGS;
+      
   private:
+     static void getSlot(int slotno);
      static int getSlot(byte type, byte id);
      static void pinsetup(int ponPos, byte direction);
-     static void i2cpinsetup(int ponPos, byte direction);     
+     static void i2cpinsetup(byte, byte direction);
+     static bool predefinedLayout;   
      static Adafruit_MCP23017 * mcp[4]; 
      static byte flags[MAX_FLAGS];
+     static byte slot[LAYOUT_SLOT_WIDTH];  // TODO... make a struct union over this
+
+      
 };
 
 #endif
