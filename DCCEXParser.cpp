@@ -50,8 +50,9 @@ const int HASH_KEYWORD_SLOW = -17209;
 const int HASH_KEYWORD_PROGBOOST = -6353;
 const int HASH_KEYWORD_EEPROM = -7168;
 const int HASH_KEYWORD_LIMIT = 27413;
-const int HASH_KEYWORD_ETHERNET = -30767;
-   
+const int HASH_KEYWORD_ETHERNET = -30767;    
+const int HASH_KEYWORD_MAX = 16244;
+const int HASH_KEYWORD_MIN = 15978;
 
 int DCCEXParser::stashP[MAX_PARAMS];
 bool DCCEXParser::stashBusy;
@@ -489,6 +490,8 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
 
     case '+': // Complex Wifi interface command (not usual parse)
         if (atCommandCallback) {
+          DCCWaveform::mainTrack.setPowerMode(POWERMODE::OFF);
+          DCCWaveform::progTrack.setPowerMode(POWERMODE::OFF);
           atCommandCallback(com);
           return;
         }
@@ -664,12 +667,22 @@ bool DCCEXParser::parseD(Print *stream, int params, int p[])
         StringFormatter::send(stream, F("\nFree memory=%d\n"), freeMemory());
         break;
 
-    case HASH_KEYWORD_ACK: // <D ACK ON/OFF>
-	if (params >= 2 && p[1] == HASH_KEYWORD_LIMIT) {
-	  DCCWaveform::progTrack.setAckLimit(p[2]);
-          StringFormatter::send(stream, F("\nAck limit=%dmA\n"), p[2]);
-	} else
+    case HASH_KEYWORD_ACK: // <D ACK ON/OFF> <D ACK [LIMIT|MIN|MAX] Value>
+	if (params >= 3) {
+	    if (p[1] == HASH_KEYWORD_LIMIT) {
+	      DCCWaveform::progTrack.setAckLimit(p[2]);
+	      StringFormatter::send(stream, F("\nAck limit=%dmA\n"), p[2]);
+	    } else if (p[1] == HASH_KEYWORD_MIN) {
+	      DCCWaveform::progTrack.setMinAckPulseDuration(p[2]);
+	      StringFormatter::send(stream, F("\nAck min=%dus\n"), p[2]);
+	    } else if (p[1] == HASH_KEYWORD_MAX) {
+	      DCCWaveform::progTrack.setMaxAckPulseDuration(p[2]);
+	      StringFormatter::send(stream, F("\nAck max=%dus\n"), p[2]);
+	    }
+	} else {
+	  StringFormatter::send(stream, F("\nAck diag %S\n"), onOff ? F("on") : F("off"));
 	  Diag::ACK = onOff;
+	}
         return true;
 
     case HASH_KEYWORD_CMD: // <D CMD ON/OFF>
@@ -696,8 +709,8 @@ bool DCCEXParser::parseD(Print *stream, int params, int p[])
         DCC::setProgTrackBoost(true);
 	return true;
 
-    case HASH_KEYWORD_EEPROM:
-	if (params >= 1)
+    case HASH_KEYWORD_EEPROM: // <D EEPROM NumEntries>
+	if (params >= 2)
 	    EEStore::dump(p[1]);
 	return true;
 
