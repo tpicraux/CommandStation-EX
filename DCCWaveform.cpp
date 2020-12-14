@@ -39,6 +39,9 @@ void DCCWaveform::begin(MotorDriver * mainDriver, MotorDriver * progDriver, byte
 
   mainTrack.setPowerMode(POWERMODE::OFF);      
   progTrack.setPowerMode(POWERMODE::OFF);
+  LCD(2,F("MAIN OFF"));
+  LCD(3,F("PROG OFF"));
+
   switch (timerNumber) {
     case 1: interruptTimer= &TimerA; break;
     case 2: interruptTimer= &TimerB; break;
