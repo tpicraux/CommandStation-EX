@@ -403,6 +403,14 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
 		if (mode == POWERMODE::OFF)
 		  DCC::setProgTrackBoost(false);  // Prog track boost mode will not outlive prog track off
                 StringFormatter::send(stream, F("<p%c>"), opcode);
+                if (mode == POWERMODE::ON){
+                    LCD(2,F("MAIN ON"));
+                    LCD(3,F("PROG ON"));
+                }
+                else {
+                    LCD(2,F("MAIN OFF"));
+                    LCD(3,F("PROG OFF"));
+                }    
                 return;
             }
             switch (p[0])
@@ -410,6 +418,12 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
             case HASH_KEYWORD_MAIN:
                 DCCWaveform::mainTrack.setPowerMode(mode);
                 StringFormatter::send(stream, F("<p%c MAIN>"), opcode);
+                if (mode == POWERMODE::ON){
+                    LCD(2,F("MAIN ON"));
+                }
+                else {
+                    LCD(2,F("MAIN OFF"));
+                }    
                 return;
 
             case HASH_KEYWORD_PROG:
@@ -417,6 +431,12 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
 		if (mode == POWERMODE::OFF)
 		  DCC::setProgTrackBoost(false);  // Prog track boost mode will not outlive prog track off
                 StringFormatter::send(stream, F("<p%c PROG>"), opcode);
+                if (mode == POWERMODE::ON){
+                    LCD(3,F("PROG ON"));
+                }
+                else {
+                    LCD(3,F("PROG OFF"));
+                }    
                 return;
             case HASH_KEYWORD_JOIN:
                 DCCWaveform::mainTrack.setPowerMode(mode);
@@ -425,9 +445,14 @@ void DCCEXParser::parse(Print *stream, byte *com, bool blocking)
                 {
                     DCC::setProgTrackSyncMain(true);
                     StringFormatter::send(stream, F("<p1 JOIN>"), opcode);
+                    LCD(2,F("MAIN ON"));
+                    LCD(3,F("PROG ON"));
                 }
-                else
+                else {
                     StringFormatter::send(stream, F("<p0>"));
+                    LCD(2,F("MAIN OFF"));
+                    LCD(3,F("PROG OFF"));
+                }
                 return;
             }
             break;
