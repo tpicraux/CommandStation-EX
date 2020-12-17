@@ -626,7 +626,10 @@ bool DCCEXParser::parseT(Print *stream, int params, int p[])
         for (Turnout *tt = Turnout::firstTurnout; tt != NULL; tt = tt->nextTurnout)
         {
             gotOne = true;
-            StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, (tt->data.tStatus & STATUS_ACTIVE)!=0);
+        //
+        //    Use the following to show all data (like DCC++ did less the state)
+        //      StringFormatter::send(stream, F("<H %d %d %d %d>"), tt->data.id, tt->data.address, tt->data.subAddress, (tt->data.tStatus & STATUS_ACTIVE)!=0);
+            StringFormatter::send(stream, F("<H %d %d>"), tt->data.id, (tt->data.tStatus & STATUS_ACTIVE)!=0); //shows id and active state only
         }
         return gotOne; // will <X> if none found
     }
@@ -648,6 +651,10 @@ bool DCCEXParser::parseT(Print *stream, int params, int p[])
         return true;
 
     case 3: // <T id addr subaddr>  define turnout
+        if(p[2] > 3){
+            p[2] = 4; //force 4 for Kato turnout
+            if((p[1] < 1) || (p[1] > (NumPins))) return false;
+        }
         if (!Turnout::create(p[0], p[1], p[2]))
             return false;
         StringFormatter::send(stream, F("<O>"));
