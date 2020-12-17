@@ -74,7 +74,10 @@ void loop()
 #if ETHERNET_ON
   EthernetInterface::loop();
 #endif
-
+//
+//update Kato Turnouts ...if any
+//
+  Turnout::swUpdate();   //update turnout switch machines
   LCDDisplay::loop();  // ignored if LCD not in use 
   
 // Optionally report any decrease in memory (will automatically trigger on first call)

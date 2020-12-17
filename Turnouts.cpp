@@ -24,6 +24,17 @@
 #ifdef EESTOREDEBUG
 #include "DIAG.h"
 #endif
+//
+// Additions for Kato turnout
+//
+#include <SwitchMachine.h>
+#include <RingBuffer.h>
+#include "Timeout.h"
+
+RingBuffer swQueue(NumPins*2);  //allows for 2 commands queued per switch
+SwitchMachine* swms[NumPins];  // define number switch machines
+Timeout timer;
+bool tstate = false;
 
 bool Turnout::activate(int n,bool state){
 #ifdef EESTOREDEBUG
@@ -54,6 +65,12 @@ void Turnout::activate(bool state) {
     data.tStatus &= ~STATUS_ACTIVE;
   if (data.tStatus & STATUS_PWM)
     PWMServoDriver::setServo(data.tStatus & STATUS_PWMPIN, (data.inactiveAngle+(state?data.moveAngle:0)));
+  else if (data.tStatus & STATUS_KATO){
+      if (!state)
+      swQueue.push((byte) SwitchMachine::eMain | (data.address << 4));
+      else
+      swQueue.push((byte) SwitchMachine::eDiverging | (data.address << 4));
+    }
   else
     DCC::setAccessory(data.address,data.subAddress, state);
   EEStore::store();
@@ -93,8 +110,29 @@ void Turnout::load(){
   for(int i=0;i<EEStore::eeStore->data.nTurnouts;i++){
     EEPROM.get(EEStore::pointer(),data);
     if (data.tStatus & STATUS_PWM) tt=create(data.id,data.tStatus & STATUS_PWMPIN, data.inactiveAngle,data.moveAngle);
-    else tt=create(data.id,data.address,data.subAddress);
-    tt->data.tStatus=data.tStatus;
+    else {
+      if (data.tStatus & STATUS_KATO) {
+        for (byte k = 0; k < NumPins; ++k) {
+          swms[k] = new SwitchMachine(pins[k]); // create the switch machine objects
+          delay(100);
+        }
+      data.subAddress = 4; //Kato subaddress > 3 ...make sure
+      } 
+    bool tstate = false;
+    if (data.tStatus & STATUS_ACTIVE) tstate = true;
+    tt=create(data.id,data.address,data.subAddress);
+    } 
+    if (tstate) data.tStatus= data.tStatus | STATUS_ACTIVE; //restore active state
+    if(data.tStatus & STATUS_KATO){
+      if (data.tStatus & !STATUS_ACTIVE) {     // queue up the commands to initialize the turnout to stored state
+       swQueue.push((byte) SwitchMachine::eMain | (data.address << 4)),
+       swQueue.push((byte) SwitchMachine::eRefresh | (data.address << 4)); //force it
+      }
+      else {
+       swQueue.push((byte) SwitchMachine::eDiverging | (data.address << 4)),
+       swQueue.push((byte) SwitchMachine::eRefresh | (data.address << 4)); //force it
+      }
+    }
     EEStore::advance(sizeof(tt->data));
 #ifdef EESTOREDEBUG
     tt->print(tt);
@@ -128,6 +166,10 @@ Turnout *Turnout::create(int id, int add, int subAdd){
   tt->data.address=add;
   tt->data.subAddress=subAdd;
   tt->data.tStatus=0;
+  if (subAdd >3) {
+    tt->data.subAddress = 4; //force KATO = 4
+    tt->data.tStatus = STATUS_KATO;
+  }
   return(tt);
 }
 
@@ -164,5 +206,38 @@ void Turnout::print(Turnout *tt) {
 }
 #endif
 
+void Turnout::swUpdate(){ 
+  // Called once each pass in loop()
+  // Update the SwitchMachine objects.
+  for (byte i = 0; i < NumPins; ++i) {
+    swms[i]->update();
+  }
+    
+  // Update the Timeout.  ensure only one switch actived at a time
+  timer.update();
+  
+  // If enough time has passed and there are any
+  // operation codes in the queue, fetch the code
+  // at the front of the queue and command the
+  // selected switch machine to throw.
+  if (timer.isTimedOut() && !swQueue.isEmpty()) {
+    // Fetch the operation code.
+    byte op = swQueue.pop();
+    
+    // The channel number is in the high 4 bits.
+    byte chan = (op >> 4) & 0x0F;
+    
+    // The operation is in the low 4 bits.
+    op &= 0x0F;
+    
+    // Command the switch machine to throw.
+    swms[(chan-1)]->throwPoints(static_cast<SwitchMachine::E_DIR>(op));
+    
+    // Force minimum delay before another switch
+    // machine can be commanded to throw.
+    timer.setTimeout(100);
+  }
+
+} // update switch machine
 Turnout *Turnout::firstTurnout=NULL;
 int Turnout::turnoutlistHash=0; //bump on every change so clients know when to refresh their lists
