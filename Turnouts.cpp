@@ -60,19 +60,22 @@ void Turnout::activate(bool state) {
   DIAG(F("\nTurnout::activate(%d)\n"),state);
 #endif
   if (state)
-    data.tStatus|=STATUS_ACTIVE;
+    data.tStatus|=STATUS_ACTIVE; //active = Thrown
   else
     data.tStatus &= ~STATUS_ACTIVE;
   if (data.tStatus & STATUS_PWM)
     PWMServoDriver::setServo(data.tStatus & STATUS_PWMPIN, (data.inactiveAngle+(state?data.moveAngle:0)));
-  else if (data.tStatus & STATUS_KATO){
+  else {
+    if (data.tStatus & STATUS_KATO){
       if (!state)
       swQueue.push((byte) SwitchMachine::eMain | (data.address << 4));
       else
       swQueue.push((byte) SwitchMachine::eDiverging | (data.address << 4));
     }
-  else
+    else {
     DCC::setAccessory(data.address,data.subAddress, state);
+    }
+  }
   EEStore::store();
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -106,25 +109,19 @@ bool Turnout::remove(int n){
 void Turnout::load(){
   struct TurnoutData data;
   Turnout *tt;
-
-  for(int i=0;i<EEStore::eeStore->data.nTurnouts;i++){
-    EEPROM.get(EEStore::pointer(),data);
-    if (data.tStatus & STATUS_PWM) tt=create(data.id,data.tStatus & STATUS_PWMPIN, data.inactiveAngle,data.moveAngle);
-    else {
-      if (data.tStatus & STATUS_KATO) {
-        for (byte k = 0; k < NumPins; ++k) {
+  for (byte k = 0; k < NumPins; ++k) {  
           swms[k] = new SwitchMachine(pins[k]); // create the switch machine objects
           delay(100);
-        }
-      data.subAddress = 4; //Kato subaddress > 3 ...make sure
-      } 
+      }
+  for(int i=0;i<EEStore::eeStore->data.nTurnouts;i++){
+    EEPROM.get(EEStore::pointer(),data);
     bool tstate = false;
     if (data.tStatus & STATUS_ACTIVE) tstate = true;
-    tt=create(data.id,data.address,data.subAddress);
-    } 
-    if (tstate) data.tStatus= data.tStatus | STATUS_ACTIVE; //restore active state
+    if (data.tStatus & STATUS_PWM) tt=create(data.id,data.tStatus & STATUS_PWMPIN, data.inactiveAngle,data.moveAngle);
+    else tt=create(data.id,data.address,data.subAddress); //sets data.tStatus inactive
+    if (tstate) data.tStatus = data.tStatus | STATUS_ACTIVE; //restore active state
     if(data.tStatus & STATUS_KATO){
-      if (data.tStatus & !STATUS_ACTIVE) {     // queue up the commands to initialize the turnout to stored state
+      if (!tstate) {     // queue up the commands to initialize the turnout to stored state
        swQueue.push((byte) SwitchMachine::eMain | (data.address << 4)),
        swQueue.push((byte) SwitchMachine::eRefresh | (data.address << 4)); //force it
       }
@@ -133,6 +130,7 @@ void Turnout::load(){
        swQueue.push((byte) SwitchMachine::eRefresh | (data.address << 4)); //force it
       }
     }
+    tt->data.tStatus=data.tStatus;
     EEStore::advance(sizeof(tt->data));
 #ifdef EESTOREDEBUG
     tt->print(tt);
